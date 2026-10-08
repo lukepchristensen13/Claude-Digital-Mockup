@@ -71,8 +71,24 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
 <body>
 <div class="phone" id="app"></div>
 <div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-var S={screen:'create',tab:'inv',sel:null,user:null,
+// ========================= SUPABASE SETTINGS =========================
+// Supabase dashboard -> Project Settings -> API: copy the Project URL and
+// the publishable (anon) key, paste them below, then set USE_SUPABASE to true.
+// While USE_SUPABASE is false, the site runs as the offline prototype (nothing saves).
+const SUPABASE_URL = 'https://viqwwurtbiqbehpichjv.supabase.co/rest/v1/'   // <-- paste here
+const SUPABASE_KEY = 'sb_publishable_MH5CHLdfcOUYkkJOIRvQvg_-0TV6Ohg'   // <-- paste here
+const USE_SUPABASE = true                       // <-- change to true once credentials are filled in
+// =====================================================================
+
+var sb=null;
+if(USE_SUPABASE){
+ if(window.supabase)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+ else setTimeout(function(){toast('Could not load Supabase. Check your internet connection.')},0);
+}
+
+var S={screen:'create',tab:'inv',sel:null,user:null,uid:null,
 inv:[{id:1,n:'Spinach',q:1,d:'Bagged, 5 oz',e:off(1),i:'🥬'},{id:2,n:'Eggs',q:6,d:'',e:off(6),i:'🥚'},{id:3,n:'Milk',q:1,d:'Half gallon',e:off(3),i:'🥛'},{id:4,n:'Rice',q:2,d:'',e:off(200),i:'🍚'},{id:5,n:'Tomatoes',q:4,d:'',e:off(9),i:'🍅'}],
 groc:[{id:1,n:'Bread',done:false},{id:2,n:'Butter',done:true}],
 saved:[0],nid:10,gopen:false};
@@ -89,7 +105,36 @@ function v(id){return document.getElementById(id).value.trim()}
 function toast(m,ok){var t=document.getElementById('toast');t.innerHTML='<div class="toast '+(ok?'ok':'')+'" role="alert">'+esc(m)+'</div>';setTimeout(function(){t.innerHTML=''},2600)}
 function go(s,t){S.screen=s;if(t)S.tab=t;S.sel=null;render()}
 function icon(n){var m={spinach:'🥬',egg:'🥚',milk:'🥛',rice:'🍚',tomato:'🍅',bread:'🍞',butter:'🧈',apple:'🍎'};n=n.toLowerCase();for(var k in m)if(n.indexOf(k)>-1)return m[k];return'🍽️'}
- 
+
+// ---------- Database helpers (only used when USE_SUPABASE is true) ----------
+function rowInv(r){return{id:r.item_id,n:r.item_name,q:r.quantity,d:r.details||'',e:r.expiration_date,i:r.icon||icon(r.item_name)}}
+function rowG(r){return{id:r.grocery_item_id,n:r.item_name,done:r.is_checked}}
+function chk(r){if(r.error)throw r.error;return r.data}
+function fail(e){console.error(e);toast('Database error: '+(e&&e.message?e.message:e))}
+// Password hashing (SHA-256) so plain-text passwords are never stored
+async function sha(t){return sha256js(t)}
+function sha256js(s){var b=new TextEncoder().encode(s),K=[],H=[],i,j,n,c,f,pr;
+ for(n=2,c=0;c<64;n++){pr=1;for(f=2;f*f<=n;f++)if(n%f==0){pr=0;break}if(pr){if(c<8)H[c]=Math.pow(n,1/2)*4294967296|0;K[c++]=Math.pow(n,1/3)*4294967296|0}}
+ var l=b.length,w=new Uint8Array(((l+9+63)>>6)<<6);w.set(b);w[l]=128;var dv=new DataView(w.buffer);
+ dv.setUint32(w.length-4,(l*8)>>>0);dv.setUint32(w.length-8,Math.floor(l/536870912));
+ for(i=0;i<w.length;i+=64){var W=[],a=H.slice(0);
+  for(j=0;j<64;j++){if(j<16)W[j]=dv.getUint32(i+j*4);else{var x=W[j-15],y=W[j-2];W[j]=(((x>>>7|x<<25)^(x>>>18|x<<14)^(x>>>3))+W[j-7]+((y>>>17|y<<15)^(y>>>19|y<<13)^(y>>>10))+W[j-16])|0}
+   var e=a[4],A=a[0],t1=a[7]+((e>>>6|e<<26)^(e>>>11|e<<21)^(e>>>25|e<<7))+((e&a[5])^(~e&a[6]))+K[j]+W[j],t2=((A>>>2|A<<30)^(A>>>13|A<<19)^(A>>>22|A<<10))+((A&a[1])^(A&a[2])^(a[1]&a[2]));
+   a=[(t1+t2)|0].concat(a);a[4]=(a[4]+t1)|0;a.length=8}
+  for(j=0;j<8;j++)H[j]=(H[j]+a[j])|0}
+ return H.map(function(h){return(h>>>0).toString(16).padStart(8,'0')}).join('')}
+function setUser(row){S.uid=row.user_id;S.user=row.username;try{localStorage.setItem('pantry_user',JSON.stringify({id:row.user_id,u:row.username}))}catch(e){}}
+async function loadAll(){
+ var res=await Promise.all([
+  sb.from('inventory_items').select('*').eq('user_id',S.uid).eq('is_used_up',false),
+  sb.from('grocery_list_items').select('*').eq('user_id',S.uid).order('grocery_item_id'),
+  sb.from('saved_recipes').select('*').eq('user_id',S.uid)]);
+ S.inv=chk(res[0]).map(rowInv);
+ S.groc=chk(res[1]).map(rowG);
+ S.saved=chk(res[2]).map(function(r){return R.findIndex(function(x){return x.n==r.recipe_name})}).filter(function(i){return i>-1});
+}
+function logout(){try{localStorage.removeItem('pantry_user')}catch(e){}S.uid=null;S.user=null;if(sb){S.inv=[];S.groc=[];S.saved=[]}go('login')}
+
 function render(){
  var a=document.getElementById('app'),h='';
  if(S.screen=='create')h=createH();
@@ -102,24 +147,37 @@ function createH(){return '<h1>Create your account</h1><p class="sub">Set up Pan
 [['First name','fn'],['Last name','ln'],['Email address','em','email'],['Phone number','ph','tel'],['Birth date','bd','date'],['University (optional)','un'],['Address','ad'],['Username','us'],['Password','pw','password']].map(function(f){return '<label for="'+f[1]+'">'+f[0]+'</label><input id="'+f[1]+'" type="'+(f[2]||'text')+'">'}).join('')+
 '<p class="meta">Password: 12+ characters, one capital letter, one special character.</p><div class="err" id="e" role="alert"></div>'+
 '<button class="btn acc" onclick="doCreate()">Create account</button><div style="text-align:right;margin-top:14px"><button class="link" onclick="go(\'login\')">Log in</button></div>'}
-function doCreate(){
+async function doCreate(){
  var f=[['fn','first name'],['ln','last name'],['em','email address'],['ph','phone number'],['bd','birth date'],['ad','address'],['us','username'],['pw','password']];
  for(var i=0;i<f.length;i++)if(!v(f[i][0]))return err('Please enter your '+f[i][1]+'.');
  if(!/^\S+@\S+\.\S+$/.test(v('em')))return err('Please enter a valid email address.');
  var p=v('pw');if(p.length<12||!/[A-Z]/.test(p)||!/[^A-Za-z0-9]/.test(p))return err('Password needs 12+ characters, a capital letter and a special character.');
- S.user=v('us');S.email=v('em');S.pass=p;go('app','inv')}
-function err(m){document.getElementById('e').textContent=m}
+ if(!sb){S.user=v('us');S.email=v('em');S.pass=p;return go('app','inv')}
+ try{
+  var r=await sb.from('users').insert({username:v('us'),email:v('em'),password_hash:await sha(p),first_name:v('fn'),last_name:v('ln'),
+   phone_number:v('ph'),birth_date:v('bd'),university:v('un')||null,address:v('ad')}).select('user_id,username').single();
+  if(r.error)return err(r.error.code=='23505'?'That username or email is already taken.':'Could not create account: '+r.error.message);
+  setUser(r.data);await loadAll();go('app','inv');toast('Account created.',1)
+ }catch(e){fail(e)}}
+function err(m){var e=document.getElementById('e');if(e)e.textContent=m;else toast(m)}
 function loginH(){return '<h1>Welcome back</h1><p class="sub">Log in to see what is in your kitchen.</p><label for="lu">Username or email</label><input id="lu"><label for="lp">Password</label><input id="lp" type="password"><div class="err" id="e" role="alert"></div><button class="btn acc" onclick="doLogin()">Log in</button>'+
 '<div class="between" style="margin-top:14px"><button class="link" onclick="go(\'forgot\')">Forgot password or username?</button><button class="link" onclick="go(\'create\')">Create account</button></div><p class="meta">Prototype tip: create an account first, or log in with demo / Demo-Pass-1234!</p>'}
-function doLogin(){var u=v('lu'),p=v('lp'),ok=(u=='demo'&&p=='Demo-Pass-1234!')||(S.user&&(u==S.user||u==S.email)&&p==S.pass);
+async function doLogin(){var u=v('lu'),p=v('lp');
  if(!u||!p)return err('Please enter your username and password.');
- if(!ok)return err('Username or password is incorrect. Try again.');S.user=S.user||'demo';go('app','inv')}
+ if(!sb){var ok=(u=='demo'&&p=='Demo-Pass-1234!')||(S.user&&(u==S.user||u==S.email)&&p==S.pass);
+  if(!ok)return err('Username or password is incorrect. Try again.');S.user=S.user||'demo';return go('app','inv')}
+ try{
+  var r=await sb.from('users').select('user_id,username,password_hash').eq(u.indexOf('@')>-1?'email':'username',u).maybeSingle();
+  if(r.error)throw r.error;
+  if(!r.data||r.data.password_hash!==await sha(p))return err('Username or password is incorrect. Try again.');
+  setUser(r.data);await loadAll();go('app','inv')
+ }catch(e){fail(e)}}
 function forgotH(){return '<h1>Reset password</h1><p class="sub">Enter the email linked to your account.</p><label for="fe">Email address</label><input id="fe" type="email"><div class="err" id="e" role="alert"></div><div id="ok"></div><button class="btn acc" onclick="doForgot()">Send recovery link</button><button class="link" style="margin-top:14px" onclick="go(\'login\')">Back to log in</button>'}
 function doForgot(){if(!/^\S+@\S+\.\S+$/.test(v('fe')))return err('Please enter a valid email address.');err('');document.getElementById('ok').innerHTML='<div class="note">Check your email for a password recovery link.</div>'}
- 
+
 function invH(){
  var soon=S.inv.filter(function(x){var d=days(x.e);return d==7||d==3||d==1});
- var h='<h1>Food inventory</h1><p class="sub">Soonest to expire first.</p>';
+ var h='<div class="between"><h1>Food inventory</h1><button class="mini" onclick="logout()">Log out</button></div><p class="sub">Soonest to expire first.</p>';
  soon.forEach(function(x){h+='<div class="banner" role="status">🔔 '+esc(x.n)+' expires in '+days(x.e)+' day'+(days(x.e)>1?'s':'')+'.</div>'});
  var l=S.inv.slice().sort(function(a,b){return a.e<b.e?-1:1});
  if(!l.length)h+='<div class="note">Your inventory is empty. Tap + to add your first item.</div>';
@@ -129,53 +187,87 @@ function invH(){
  if(S.sel)h+='<div class="actionbar"><button class="btn acc" onclick="openForm('+S.sel+')">Edit</button><button class="btn ghost" style="background:var(--card)" onclick="delItem('+S.sel+')">Delete</button></div>';
  return h}
 function pick(id){S.sel=S.sel==id?null:id;render()}
-function delItem(id){if(confirm('Delete this item?')){S.inv=S.inv.filter(function(x){return x.id!=id});S.sel=null;render()}}
+async function delItem(id){if(!confirm('Delete this item?'))return;
+ if(sb){try{chk(await sb.from('inventory_items').delete().eq('item_id',id))}catch(e){return fail(e)}}
+ S.inv=S.inv.filter(function(x){return x.id!=id});S.sel=null;render()}
 function openForm(id){var x=S.inv.filter(function(i){return i.id==id})[0]||{n:'',q:'',e:'',d:''};
  var m=document.createElement('div');m.className='modal';m.id='modal';
  m.innerHTML='<div class="sheet"><h2>'+(id?'Edit item':'Add item')+'</h2><label for="in">Name</label><input id="in" value="'+esc(x.n)+'"><label for="iq">Quantity</label><input id="iq" type="number" value="'+x.q+'"><label for="ie">Expiration date</label><input id="ie" type="date" value="'+x.e+'"><label for="id">Details (optional)</label><input id="id" value="'+esc(x.d)+'"><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveItem('+(id||0)+')">Save</button></div></div>';
  document.body.appendChild(m)}
 function closeM(){var m=document.getElementById('modal');if(m)m.remove()}
-function saveItem(id){var n=v('in'),q=v('iq'),e=v('ie');
+async function saveItem(id){var n=v('in'),q=v('iq'),e=v('ie'),d=v('id');
  if(!n)return err('Please enter a name.');if(!q)return err('Please enter a quantity.');
  if(+q<1)return err('Please enter a quantity greater than 0.');if(!e)return err('Please enter an expiration date.');
  if(e<today())return err('Please enter a date on or after today.');
- if(id){var x=S.inv.filter(function(i){return i.id==id})[0];x.n=n;x.q=+q;x.e=e;x.d=v('id');x.i=icon(n)}
- else S.inv.push({id:S.nid++,n:n,q:+q,e:e,d:v('id'),i:icon(n)});
+ if(sb){
+  try{var row={item_name:n,quantity:+q,expiration_date:e,details:d||null,icon:icon(n)};
+   var r=id?await sb.from('inventory_items').update(row).eq('item_id',id).select().single()
+           :await sb.from('inventory_items').insert(Object.assign({user_id:S.uid},row)).select().single();
+   var x=rowInv(chk(r));
+   if(id)S.inv=S.inv.map(function(i){return i.id==id?x:i});else S.inv.push(x);
+  }catch(er){return err('Could not save: '+er.message)}
+ }else if(id){var x=S.inv.filter(function(i){return i.id==id})[0];x.n=n;x.q=+q;x.e=e;x.d=d;x.i=icon(n)}
+ else S.inv.push({id:S.nid++,n:n,q:+q,e:e,d:d,i:icon(n)});
  closeM();S.sel=null;render()}
- 
+
 function has(n){return S.inv.some(function(x){return x.n.toLowerCase()==n.toLowerCase()})}
 function savedH(){
  var l=S.saved;
  var h='<div class="between"><h1>Saved recipes</h1><span class="pill">Saved</span></div><p class="sub">Tap a recipe to see what you need.</p>';
+ if(!l.length)h+='<div class="note">No saved recipes yet.</div>';
  l.forEach(function(i){var r=R[i];h+='<details><summary><span>'+r.n+' <span class="meta">'+r.t+'</span></span></summary><b>Ingredients</b><ul>'+r.ing.map(function(g){return '<li class="'+(has(g)?'have':'miss')+'">'+g+(has(g)?' (in inventory)':' (need to buy)')+'</li>'}).join('')+'</ul><b>Steps</b><ol>'+r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol><button class="mini" onclick="unsave('+i+')">Remove from saved</button></details>'});
  return h+'<button class="btn acc" onclick="go(\'app\',\'sug\')">See suggested recipes</button>'}
-function unsave(i){S.saved=S.saved.filter(function(x){return x!=i});render()}
+async function unsave(i){
+ if(sb){try{chk(await sb.from('saved_recipes').delete().eq('user_id',S.uid).eq('recipe_name',R[i].n))}catch(e){return fail(e)}}
+ S.saved=S.saved.filter(function(x){return x!=i});render()}
 function sugH(){
  var h='<div class="between"><h1>Suggested recipes</h1><span class="pill sug">Suggested</span></div><p class="sub">Ideas based on what is in your inventory.</p>';
  if(!S.inv.length)return h+'<div class="note" style="border-color:var(--bad)">Add food items to see recipe ideas.</div><button class="btn acc" onclick="go(\'app\',\'inv\')">Go to inventory</button>';
  R.map(function(r,i){return{r:r,i:i,m:r.ing.filter(function(g){return !has(g)}),h:r.ing.filter(has).length}}).filter(function(o){return o.h>0}).sort(function(a,b){return a.m.length-b.m.length}).forEach(function(o){
  h+='<details><summary><span>'+o.r.n+' <span class="meta">'+o.r.t+'</span></span></summary><p class="meta">'+(o.m.length?'Missing: '+o.m.join(', '):'You have everything.')+'</p><ol>'+o.r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol><div class="row">'+(S.saved.indexOf(o.i)<0?'<button class="mini" onclick="save('+o.i+')">Save recipe</button>':'<span class="meta">Saved</span>')+(o.m.length?'<button class="mini" onclick="addMissing('+o.i+')">Add missing to grocery list</button>':'')+'</div></details>'});
  return h}
-function save(i){S.saved.push(i);toast('Recipe saved.',1);render()}
-function addMissing(i){R[i].ing.filter(function(g){return !has(g)}).forEach(function(g){addG(g,1)});toast('Added to your grocery list.',1)}
-function addG(n,q){if(!S.groc.some(function(x){return x.n.toLowerCase()==n.toLowerCase()}))S.groc.push({id:S.nid++,n:n,done:false})}
- 
+async function save(i){
+ if(sb){try{chk(await sb.from('saved_recipes').insert({user_id:S.uid,recipe_name:R[i].n}).select().single())}catch(e){return fail(e)}}
+ S.saved.push(i);toast('Recipe saved.',1);render()}
+async function addMissing(i){
+ try{var m=R[i].ing.filter(function(g){return !has(g)});for(var k=0;k<m.length;k++)await addG(m[k])}catch(e){return fail(e)}
+ toast('Added to your grocery list.',1)}
+async function addG(n,src){
+ if(S.groc.some(function(x){return x.n.toLowerCase()==n.toLowerCase()}))return;
+ if(sb)S.groc.push(rowG(chk(await sb.from('grocery_list_items').insert({user_id:S.uid,item_name:n,source_item_id:src||null}).select().single())));
+ else S.groc.push({id:S.nid++,n:n,done:false})}
+
 function grocH(){
  var h='<h1>Grocery list</h1><p class="sub">Check items off as you shop.</p><div class="row"><input id="gi" placeholder="Add an item" aria-label="Add an item"><button class="btn acc" style="width:auto;margin:0;padding:12px 18px" onclick="gAdd()">Add</button></div>';
  h+='<button class="btn ghost" style="margin-top:12px" onclick="S.gopen=!S.gopen;render()">'+(S.gopen?'Hide':'See')+' suggested items</button>';
- if(S.gopen){var s=S.inv.filter(function(x){return x.q<=1||days(x.e)<=3});h+='<div class="note">'+(s.length?s.map(function(x){return '<div class="between"><span>'+esc(x.n)+' <span class="meta">'+(x.q<=1?'running low':'expiring soon')+'</span></span><button class="mini" onclick="gSug(\''+esc(x.n)+'\')">Add</button></div>'}).join(''):'Nothing to suggest right now.')+'</div>'}
+ if(S.gopen){var s=S.inv.filter(function(x){return x.q<=1||days(x.e)<=3});h+='<div class="note">'+(s.length?s.map(function(x){return '<div class="between"><span>'+esc(x.n)+' <span class="meta">'+(x.q<=1?'running low':'expiring soon')+'</span></span><button class="mini" onclick="gSug('+x.id+')">Add</button></div>'}).join(''):'Nothing to suggest right now.')+'</div>'}
  if(!S.groc.length)h+='<div class="note">Your list is empty. Add your first item above.</div>';
  S.groc.forEach(function(g){h+='<div class="g '+(g.done?'done':'')+'"><input type="checkbox" '+(g.done?'checked':'')+' onchange="gTog('+g.id+')" aria-label="Bought '+esc(g.n)+'"><span class="t">&bull; '+esc(g.n)+'</span><button class="mini" onclick="gEdit('+g.id+')">Edit</button><button class="mini" onclick="gDel('+g.id+')">Delete</button></div>'});
  return h+'<button class="btn" onclick="go(\'app\',\'inv\')">Back to inventory</button>'}
-function gAdd(){var n=v('gi');if(!n)return toast('Please enter an item.');addG(n);render()}
-function gSug(n){addG(n);render()}
-function gTog(id){S.groc.forEach(function(g){if(g.id==id)g.done=!g.done});render()}
-function gDel(id){S.groc=S.groc.filter(function(g){return g.id!=id});render()}
-function gEdit(id){S.groc.forEach(function(g){if(g.id==id){var n=prompt('Edit item',g.n);if(n&&n.trim())g.n=n.trim()}});render()}
- 
+async function gAdd(){var n=v('gi');if(!n)return toast('Please enter an item.');try{await addG(n)}catch(e){return fail(e)}render()}
+async function gSug(id){var x=S.inv.filter(function(i){return i.id==id})[0];if(!x)return;try{await addG(x.n,x.id)}catch(e){return fail(e)}render()}
+async function gTog(id){var g=S.groc.filter(function(x){return x.id==id})[0];if(!g)return;
+ if(sb){try{g.done=chk(await sb.from('grocery_list_items').update({is_checked:!g.done}).eq('grocery_item_id',id).select().single()).is_checked}catch(e){fail(e)}}
+ else g.done=!g.done;
+ render()}
+async function gDel(id){
+ if(sb){try{chk(await sb.from('grocery_list_items').delete().eq('grocery_item_id',id))}catch(e){return fail(e)}}
+ S.groc=S.groc.filter(function(g){return g.id!=id});render()}
+async function gEdit(id){var g=S.groc.filter(function(x){return x.id==id})[0];if(!g)return;
+ var n=prompt('Edit item',g.n);if(!n||!n.trim())return;n=n.trim();
+ if(sb){try{g.n=chk(await sb.from('grocery_list_items').update({item_name:n}).eq('grocery_item_id',id).select().single()).item_name}catch(e){return fail(e)}}
+ else g.n=n;
+ render()}
+
 function tabsH(){var t=S.tab;
  return '<nav class="tabs"><button class="tab '+(t=='saved'||t=='sug'?'on':'')+'" onclick="go(\'app\',S.saved.length?\'saved\':\'sug\')"><b>📖</b>Recipes</button><button class="tab mid '+(t=='inv'?'on':'')+'" onclick="go(\'app\',\'inv\')"><b>🧊</b>Food inventory</button><button class="tab '+(t=='groc'?'on':'')+'" onclick="go(\'app\',\'groc\')"><b>🛒</b>Grocery list</button></nav>'}
-render();
+
+// Start: when connected, stay logged in after a refresh and reload saved data
+(async function start(){
+ if(sb){var s=null;try{s=JSON.parse(localStorage.getItem('pantry_user'))}catch(e){}
+  if(s&&s.id){S.uid=s.id;S.user=s.u;S.screen='app';S.tab='inv';S.inv=[];S.groc=[];S.saved=[];
+   try{await loadAll()}catch(e){fail(e)}}}
+ render()})();
 </script>
 </body>
 </html>
