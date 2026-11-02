@@ -40,6 +40,7 @@ input:focus,button:focus-visible{outline:3px solid var(--acc);outline-offset:1px
 .exp.soon{color:var(--warn)}.exp.gone{color:var(--bad)}.exp.fine{color:var(--ok)}
 .bubble{width:24px;height:24px;border-radius:50%;border:2px solid var(--ink);background:transparent;flex:none;cursor:pointer;padding:0}
 .sel .bubble{background:var(--ink)}
+.used{width:22px;height:22px;flex:none;cursor:pointer;accent-color:var(--ok)} /* NEW: "used up" checkbox */
 .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1.5px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));display:flex;align-items:flex-end;justify-content:center;gap:10px;max-width:480px;margin:0 auto}
 .tab{flex:1;border:0;background:none;color:var(--mute);font:inherit;font-size:.85rem;padding:8px 4px;border-radius:12px;cursor:pointer}
 .tab b{display:block;font-size:1.3rem}
@@ -329,7 +330,7 @@ function invH(){
  var l=S.inv.slice().sort(function(a,b){return a.e<b.e?-1:1});
  if(!l.length)h+='<div class="note">Your inventory is empty. Tap + to add your first item.</div>';
  l.forEach(function(x){var d=days(x.e),c=d<0?'gone':d<=3?'soon':'fine';
- h+='<div class="item '+(S.sel==x.id?'sel':'')+'"><div class="pic">'+x.i+'</div><div class="grow"><div class="name">'+esc(x.n)+' <span class="meta">x'+x.q+'</span></div><div class="meta">'+(esc(x.d)||'No details')+' &middot; '+x.e+'</div></div><div class="exp '+c+'">'+until(x.e)+'</div><button class="bubble" aria-label="Select '+esc(x.n)+'" onclick="pick('+x.id+')"></button></div>'});
+ h+='<div class="item '+(S.sel==x.id?'sel':'')+'"><input type="checkbox" class="used" aria-label="Mark '+esc(x.n)+' as used" onchange="useItem('+x.id+')"><div class="pic">'+x.i+'</div><div class="grow"><div class="name">'+esc(x.n)+' <span class="meta">x'+x.q+'</span></div><div class="meta">'+(x.d?esc(x.d)+' &middot; ':'')+x.e+'</div></div><div class="exp '+c+'">'+until(x.e)+'</div><button class="bubble" aria-label="Select '+esc(x.n)+'" onclick="pick('+x.id+')"></button></div>'}); // CHANGED: added "used" checkbox + details only show when there are details
  h+='<button class="fab" aria-label="Add item" onclick="openForm()">+</button>';
  if(S.sel)h+='<div class="actionbar"><button class="btn acc" onclick="openForm('+S.sel+')">Edit</button><button class="btn ghost" style="background:var(--card)" onclick="delItem('+S.sel+')">Delete</button></div>';
  return h}
@@ -337,6 +338,13 @@ function pick(id){S.sel=S.sel==id?null:id;render()}
 async function delItem(id){if(!confirm('Delete this item?'))return;
  if(sb){try{chk(await sb.from('inventory_items').delete().eq('item_id',id))}catch(e){return fail(e)}}
  S.inv=S.inv.filter(function(x){return x.id!=id});S.sel=null;render()}
+// NEW: mark an item as used up (hides it from inventory; kept in the database with is_used_up = true)
+async function useItem(id){
+ var x=S.inv.filter(function(i){return i.id==id})[0];if(!x)return;
+ if(sb){try{chk(await sb.from('inventory_items').update({is_used_up:true}).eq('item_id',id))}catch(e){fail(e);return render()}}
+ S.inv=S.inv.filter(function(i){return i.id!=id});
+ if(S.sel==id)S.sel=null;
+ toast(x.n+' marked as used.',1);render()}
 function openForm(id){var x=S.inv.filter(function(i){return i.id==id})[0]||{n:'',q:'',e:'',d:''};
  var m=document.createElement('div');m.className='modal';m.id='modal';
  m.innerHTML='<div class="sheet"><h2>'+(id?'Edit item':'Add item')+'</h2><label for="in">Name</label><input id="in" value="'+esc(x.n)+'"><label for="iq">Quantity</label><input id="iq" type="number" value="'+x.q+'"><label for="ie">Expiration date</label><input id="ie" type="date" value="'+x.e+'"><label for="id">Details (optional)</label><input id="id" value="'+esc(x.d)+'"><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveItem('+(id||0)+')">Save</button></div></div>';
