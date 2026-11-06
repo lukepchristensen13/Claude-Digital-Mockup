@@ -13,7 +13,7 @@ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:en
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
-.phone{max-width:480px;margin:0 auto;min-height:100vh;padding:20px 18px 110px}
+.phone{max-width:480px;margin:0 auto;min-height:100vh;padding:20px 18px calc(196px + env(safe-area-inset-bottom,0px))}
 h1{font-size:2rem;font-weight:800;margin:0 0 6px;letter-spacing:-.02em}
 h2{font-size:1.3rem;margin:0 0 4px}
 p.sub{color:var(--mute);margin:0 0 18px}
@@ -50,11 +50,16 @@ input:disabled{opacity:.5}
 .tab.mid{flex:1.5;background:var(--ink);color:var(--bg);padding:14px 4px;margin-top:-18px;font-weight:800}
 .tab.on{color:var(--ink);font-weight:800;background:var(--acc)}
 .tab.mid.on{background:var(--ink);color:var(--acc)}
-.actionbar{position:fixed;left:0;right:0;bottom:84px;max-width:480px;margin:0 auto;display:flex;gap:10px;padding:0 18px}
+.actionbar{position:fixed;left:0;right:0;bottom:calc(118px + env(safe-area-inset-bottom,0px));max-width:480px;margin:0 auto;display:flex;gap:10px;padding:0 96px 0 18px}
 .actionbar .btn{margin:0}
-.fab{position:fixed;right:max(18px,calc(50% - 222px));bottom:92px;width:56px;height:56px;border-radius:50%;border:0;background:var(--acc);color:#14302b;font-size:2rem;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.fab{position:fixed;right:max(18px,calc(50% - 222px));bottom:calc(118px + env(safe-area-inset-bottom,0px));width:68px;height:68px;border-radius:50%;border:0;background:var(--acc);color:#14302b;font-size:2.6rem;line-height:1;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25)}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:9}
-.sheet{background:var(--card);width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:20px 18px calc(24px + env(safe-area-inset-bottom,0px))}
+.sheet{background:var(--card);width:100%;max-width:480px;max-height:92vh;overflow-y:auto;border-radius:20px 20px 0 0;padding:20px 18px calc(24px + env(safe-area-inset-bottom,0px))}
+.sheet textarea{width:100%;min-height:96px;padding:12px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;resize:vertical} /* NEW: recipe form */
+.btnrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;max-width:850px} /* NEW: Saved Recipes buttons side by side */
+.btnrow .btn{margin:0;flex:1 1 200px}
+.btn.dash{background:var(--card);color:var(--ink);border:2px dashed var(--ok)} /* NEW: Add your own recipe */
+.pill.mine{background:var(--ok);color:#fff;margin-left:4px;vertical-align:2px} /* NEW: Yours tag */
 .pill{display:inline-block;background:var(--acc);color:#14302b;font-weight:800;font-size:.8rem;border-radius:99px;padding:3px 10px}
 .pill.sug{background:var(--ink);color:var(--bg)}
 details{background:var(--card);border:1.5px solid var(--line);border-radius:14px;margin-bottom:10px;padding:0 14px}
@@ -82,7 +87,7 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
         max-width: 1200px;
         min-height: 100vh;
         margin: 0 auto;
-        padding: 100px 40px 60px;
+        padding: 100px 40px 120px;
     }
 
     /* Make headings more prominent */
@@ -158,13 +163,14 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
     .fab {
         right: max(32px, calc((100vw - 1200px) / 2 + 32px));
         bottom: 32px;
-        width: 64px;
-        height: 64px;
+        width: 76px;
+        height: 76px;
+        font-size: 2.8rem;
     }
 
     /* Expand the action bar when an item is selected */
     .actionbar {
-        max-width: 600px;
+        max-width: min(600px, calc(100vw - 248px));
         bottom: 32px;
         padding: 0 24px;
     }
@@ -258,7 +264,7 @@ if(USE_SUPABASE){
 var S={screen:'create',tab:'inv',sel:null,user:null,uid:null,
 inv:[{id:1,n:'Spinach',q:1,d:'Bagged, 5 oz',e:off(1),i:'🥬'},{id:2,n:'Eggs',q:6,d:'',e:off(6),i:'🥚'},{id:3,n:'Milk',q:1,d:'Half gallon',e:off(3),i:'🥛'},{id:4,n:'Rice',q:2,d:'',e:off(200),i:'🍚'},{id:5,n:'Tomatoes',q:4,d:'',e:off(9),i:'🍅'}],
 groc:[{id:1,n:'Bread',done:false},{id:2,n:'Butter',done:true}],
-saved:[0],used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none'},nid:10,gopen:false}; // CHANGED: added used:[] (items marked as used)
+saved:[0],mine:[],used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none'},nid:10,gopen:false}; // CHANGED: added used:[] (items marked as used)
 var MAXQ=99; // NEW: max quantity for an item
 function maxExp(){var d=new Date();d.setFullYear(d.getFullYear()+3);return d.toISOString().slice(0,10)} // NEW: latest allowed expiration (3 years out)
 var R=[{n:'Spinach Egg Scramble',t:'10 min',ing:['Spinach','Eggs'],st:['Whisk eggs.','Wilt spinach in a pan.','Add eggs and stir until set.']},
@@ -277,6 +283,7 @@ function icon(n){var m={spinach:'🥬',egg:'🥚',milk:'🥛',rice:'🍚',tomato
 
 // ---------- Database helpers (only used when USE_SUPABASE is true) ----------
 function rowInv(r){return{id:r.item_id,n:r.item_name,q:r.quantity,d:r.details||'',e:r.expiration_date||'',i:r.icon||icon(r.item_name)}}
+function rowMine(r){return{n:r.recipe_name,t:r.cook_time||'',ing:r.ingredients||[],st:r.steps||[]}} // NEW
 function rowG(r){return{id:r.grocery_item_id,n:r.item_name,done:r.is_checked}}
 function chk(r){if(r.error)throw r.error;return r.data}
 function fail(e){console.error(e);toast('Database error: '+(e&&e.message?e.message:e))}
@@ -302,12 +309,14 @@ async function loadAll(){
  S.inv=chk(res[0]).map(rowInv);
  S.used=chk(res[3]).map(rowInv); // NEW
  S.groc=chk(res[1]).map(rowG);
- S.saved=chk(res[2]).map(function(r){return R.findIndex(function(x){return x.n==r.recipe_name})}).filter(function(i){return i>-1});
+ var sr=chk(res[2]);
+ S.mine=sr.filter(function(r){return r.ingredients}).map(rowMine); // NEW: the user's own recipes
+ S.saved=sr.filter(function(r){return !r.ingredients}).map(function(r){return R.findIndex(function(x){return x.n==r.recipe_name})}).filter(function(i){return i>-1});
  var pr=await sb.from('users').select('username,email,first_name,last_name,phone_number,bio,notification_preference').eq('user_id',S.uid).single();
  if(!pr.error&&pr.data)S.profile=Object.assign({},S.profile,pr.data);
 }
 
-function logout(){try{localStorage.removeItem('pantry_user')}catch(e){}S.uid=null;S.user=null;if(sb){S.inv=[];S.groc=[];S.saved=[];S.used=[]}go('login')}
+function logout(){try{localStorage.removeItem('pantry_user')}catch(e){}S.uid=null;S.user=null;if(sb){S.inv=[];S.groc=[];S.saved=[];S.mine=[];S.used=[]}go('login')}
 
 function render(){
  var a=document.getElementById('app'),h='';
@@ -402,12 +411,37 @@ async function saveItem(id){var n=v('in'),q=v('iq'),e=v('ie'),d=v('id'),ne=docum
  closeM();S.sel=null;render()}
 
 function has(n){return S.inv.some(function(x){return x.n.toLowerCase()==n.toLowerCase()})}
+function ingList(ing){return '<ul>'+ing.map(function(g){return '<li class="'+(has(g)?'have':'miss')+'">'+esc(g)+(has(g)?' (in inventory)':' (need to buy)')+'</li>'}).join('')+'</ul>'}
 function savedH(){
- var l=S.saved;
+ var l=S.saved,m=S.mine;
  var h='<div class="between"><h1>Saved Recipes</h1><span class="pill">Saved</span></div><p class="sub">Tap a recipe to see what you need.</p>';
- if(!l.length)h+='<div class="note">No saved recipes yet.</div>';
- l.forEach(function(i){var r=R[i];h+='<details><summary><span>'+r.n+' <span class="meta">'+r.t+'</span></span></summary><b>Ingredients</b><ul>'+r.ing.map(function(g){return '<li class="'+(has(g)?'have':'miss')+'">'+g+(has(g)?' (in inventory)':' (need to buy)')+'</li>'}).join('')+'</ul><b>Steps</b><ol>'+r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol><button class="mini" onclick="unsave('+i+')">Remove from saved</button></details>'});
- return h+'<button class="btn acc" onclick="go(\'app\',\'sug\')">See suggested recipes</button>'}
+ if(!l.length&&!m.length)h+='<div class="note">No saved recipes yet. Add your own, or save one from the suggestions.</div>';
+ // NEW: the user's own recipes, marked "Yours"
+ m.forEach(function(r,k){var miss=r.ing.filter(function(g){return !has(g)}).length;
+  h+='<details><summary><span>'+esc(r.n)+(r.t?' <span class="meta">'+esc(r.t)+'</span>':'')+' <span class="pill mine">Yours</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol><div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:4px 16px">'+(miss?'<button class="mini" style="white-space:nowrap;padding:0" onclick="addMissingMine('+k+')">Add missing to grocery list</button>':'')+'<button class="mini" style="white-space:nowrap;padding:0" onclick="delMine('+k+')">Delete recipe</button></div></details>'});
+ l.forEach(function(i){var r=R[i];h+='<details><summary><span>'+r.n+' <span class="meta">'+r.t+'</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol><button class="mini" onclick="unsave('+i+')">Remove from saved</button></details>'});
+ return h+'<div class="btnrow"><button class="btn dash" onclick="openRecipeForm()">+ Add your own recipe</button><button class="btn acc" onclick="go(\'app\',\'sug\')">See suggested recipes</button></div>'}
+// NEW: form for adding your own recipe
+function openRecipeForm(){
+ var m=document.createElement('div');m.className='modal';m.id='modal';
+ m.innerHTML='<div class="sheet"><h2>Add Your Own Recipe</h2><label for="rn">Recipe name</label><input id="rn" maxlength="60"><label for="rt">Cook time (optional)</label><input id="rt" maxlength="20" placeholder="e.g. 20 min"><label for="ri">Ingredients (one per line)</label><textarea id="ri" placeholder="Eggs&#10;Spinach&#10;Cheese"></textarea><label for="rs">Steps (one per line)</label><textarea id="rs" placeholder="Whisk the eggs.&#10;Cook the spinach.&#10;Add eggs and stir."></textarea><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveRecipe()">Save recipe</button></div></div>';
+ document.body.appendChild(m);document.getElementById('rn').focus()}
+function lines(id){return document.getElementById(id).value.split('\n').map(function(x){return x.trim()}).filter(Boolean)}
+async function saveRecipe(){var n=v('rn'),t=v('rt'),ing=lines('ri'),st=lines('rs');
+ if(!n)return err('Please enter a recipe name.');
+ if(!ing.length)return err('Please add at least one ingredient.');
+ if(!st.length)return err('Please add at least one step.');
+ if(S.mine.some(function(r){return r.n.toLowerCase()==n.toLowerCase()}))return err('You already have a recipe with that name.');
+ var rec={n:n,t:t,ing:ing,st:st};
+ if(sb){try{rec=rowMine(chk(await sb.from('saved_recipes').insert({user_id:S.uid,recipe_name:n,cook_time:t||null,ingredients:ing,steps:st}).select().single()))}
+  catch(e){return err(e.code=='23505'?'You already have a recipe with that name.':/column/i.test(e.message||'')?'The database needs a quick update before custom recipes can be saved (see the setup note).':'Could not save: '+e.message)}}
+ S.mine.unshift(rec);closeM();toast('Recipe saved.',1);go('app','saved')}
+async function delMine(k){var r=S.mine[k];if(!r||!confirm('Delete "'+r.n+'"?'))return;
+ if(sb){try{chk(await sb.from('saved_recipes').delete().eq('user_id',S.uid).eq('recipe_name',r.n).not('ingredients','is',null))}catch(e){return fail(e)}}
+ S.mine.splice(k,1);render()}
+async function addMissingMine(k){
+ try{var m=S.mine[k].ing.filter(function(g){return !has(g)});for(var i=0;i<m.length;i++)await addG(m[i])}catch(e){return fail(e)}
+ toast('Added to your grocery list.',1)}
 async function unsave(i){
  if(sb){try{chk(await sb.from('saved_recipes').delete().eq('user_id',S.uid).eq('recipe_name',R[i].n))}catch(e){return fail(e)}}
  S.saved=S.saved.filter(function(x){return x!=i});render()}
@@ -478,12 +512,12 @@ async function saveProfile(){var fn=v('pf_fn'),ln=v('pf_ln'),em=v('pf_em'),ph=v(
 function profileErr(m){var e=document.getElementById('profileErr');if(e)e.textContent=m;else toast(m)}
 
 function tabsH(){var t=S.tab;
- return '<nav class="tabs"><button class="tab '+(t=='profile'?'on':'')+'" onclick="go(\'app\',\'profile\')"><b>👤</b>Profile</button><button class="tab '+(t=='saved'||t=='sug'?'on':'')+'" onclick="go(\'app\',S.saved.length?\'saved\':\'sug\')"><b>📖</b>Recipes</button><button class="tab mid '+(t=='inv'?'on':'')+'" onclick="go(\'app\',\'inv\')"><b>🧊</b>Food Inventory</button><button class="tab '+(t=='groc'?'on':'')+'" onclick="go(\'app\',\'groc\')"><b>🛒</b>Grocery List</button></nav>'}
+ return '<nav class="tabs"><button class="tab '+(t=='profile'?'on':'')+'" onclick="go(\'app\',\'profile\')"><b>👤</b>Profile</button><button class="tab '+(t=='saved'||t=='sug'?'on':'')+'" onclick="go(\'app\',\'saved\')"><b>📖</b>Recipes</button><button class="tab mid '+(t=='inv'?'on':'')+'" onclick="go(\'app\',\'inv\')"><b>🧊</b>Food Inventory</button><button class="tab '+(t=='groc'?'on':'')+'" onclick="go(\'app\',\'groc\')"><b>🛒</b>Grocery List</button></nav>'}
 
 // Restore the signed-in account and load its profile from Supabase.
 (async function start(){
  if(sb){var s=null;try{s=JSON.parse(localStorage.getItem('pantry_user'))}catch(e){}
-  if(s&&s.id){S.uid=s.id;S.user=s.u;S.screen='app';S.tab='inv';S.inv=[];S.groc=[];S.saved=[];S.used=[];
+  if(s&&s.id){S.uid=s.id;S.user=s.u;S.screen='app';S.tab='inv';S.inv=[];S.groc=[];S.saved=[];S.mine=[];S.used=[];
    try{await loadAll()}catch(e){fail(e)}}
  }else{try{var p=JSON.parse(localStorage.getItem('pantry_profile_offline')||'null');if(p){S.profile=p;S.user=p.username;S.email=p.email;S.screen='app'}}catch(e){}}
  render()})();
