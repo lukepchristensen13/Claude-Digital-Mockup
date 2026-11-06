@@ -446,7 +446,7 @@ async function unsave(i){
  if(sb){try{chk(await sb.from('saved_recipes').delete().eq('user_id',S.uid).eq('recipe_name',R[i].n))}catch(e){return fail(e)}}
  S.saved=S.saved.filter(function(x){return x!=i});render()}
 function sugH(){
- var h='<div class="between"><h1>Suggested Recipes</h1><span class="pill sug">Suggested</span></div><p class="sub">Ideas based on what is in your inventory.</p>';
+ var h='<div style="margin-bottom:10px"><button class="mini" type="button" onclick="go(\'app\',\'saved\')">← Back to saved recipes</button></div><div class="between"><h1>Suggested Recipes</h1><span class="pill sug">Suggested</span></div><p class="sub">Ideas based on what is in your inventory.</p>';
  if(!S.inv.length)return h+'<div class="note" style="border-color:var(--bad)">Add food items to see recipe ideas.</div><button class="btn acc" onclick="go(\'app\',\'inv\')">Go to inventory</button>';
  R.map(function(r,i){return{r:r,i:i,m:r.ing.filter(function(g){return !has(g)}),h:r.ing.filter(has).length}}).filter(function(o){return o.h>0}).sort(function(a,b){return a.m.length-b.m.length}).forEach(function(o){
  h+='<details><summary><span>'+o.r.n+' <span class="meta">'+o.r.t+'</span></span></summary><p class="meta">'+(o.m.length?'Missing: '+o.m.join(', '):'You have everything.')+'</p><ol>'+o.r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol><div class="row">'+(S.saved.indexOf(o.i)<0?'<button class="mini" onclick="save('+o.i+')">Save recipe</button>':'<span class="meta">Saved</span>')+(o.m.length?'<button class="mini" onclick="addMissing('+o.i+')">Add missing to grocery list</button>':'')+'</div></details>'});
