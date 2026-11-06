@@ -217,6 +217,22 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
     }
 }
  
+/* Profile screen */
+.profile-grid{display:grid;grid-template-columns:minmax(220px,300px) minmax(0,1fr);gap:20px;align-items:start;max-width:1000px}
+.profile-card{background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:22px;margin-bottom:14px}
+.profile-identity{text-align:center;padding:26px 20px}
+.profile-avatar{width:82px;height:82px;border-radius:50%;background:var(--bg);border:3px solid var(--line);display:grid;place-items:center;margin:0 auto 12px;font-size:2rem;font-weight:800}
+.profile-bio{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mute);margin:14px 0 0}
+.profile-fields{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.profile-fields .wide{grid-column:1/-1}
+.profile-fields textarea{width:100%;min-height:100px;padding:12px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;resize:vertical}
+.profile-fields input{margin:0}
+.profile-radio{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.profile-radio label{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:11px;padding:10px 13px;margin:0;cursor:pointer;background:var(--card)}
+.profile-radio input{width:auto;accent-color:var(--ok)}
+.profile-radio label:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+@media(max-width:700px){.profile-grid{grid-template-columns:1fr}.profile-fields{grid-template-columns:1fr}.profile-fields .wide{grid-column:auto}}
+
 </style>
 </head>
 <body>
@@ -242,7 +258,7 @@ if(USE_SUPABASE){
 var S={screen:'create',tab:'inv',sel:null,user:null,uid:null,
 inv:[{id:1,n:'Spinach',q:1,d:'Bagged, 5 oz',e:off(1),i:'🥬'},{id:2,n:'Eggs',q:6,d:'',e:off(6),i:'🥚'},{id:3,n:'Milk',q:1,d:'Half gallon',e:off(3),i:'🥛'},{id:4,n:'Rice',q:2,d:'',e:off(200),i:'🍚'},{id:5,n:'Tomatoes',q:4,d:'',e:off(9),i:'🍅'}],
 groc:[{id:1,n:'Bread',done:false},{id:2,n:'Butter',done:true}],
-saved:[0],used:[],nid:10,gopen:false}; // CHANGED: added used:[] (items marked as used)
+saved:[0],used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none'},nid:10,gopen:false}; // CHANGED: added used:[] (items marked as used)
 var MAXQ=99; // NEW: max quantity for an item
 function maxExp(){var d=new Date();d.setFullYear(d.getFullYear()+3);return d.toISOString().slice(0,10)} // NEW: latest allowed expiration (3 years out)
 var R=[{n:'Spinach Egg Scramble',t:'10 min',ing:['Spinach','Eggs'],st:['Whisk eggs.','Wilt spinach in a pan.','Add eggs and stir until set.']},
@@ -287,7 +303,10 @@ async function loadAll(){
  S.used=chk(res[3]).map(rowInv); // NEW
  S.groc=chk(res[1]).map(rowG);
  S.saved=chk(res[2]).map(function(r){return R.findIndex(function(x){return x.n==r.recipe_name})}).filter(function(i){return i>-1});
+ var pr=await sb.from('users').select('username,email,first_name,last_name,phone_number,bio,notification_preference').eq('user_id',S.uid).single();
+ if(!pr.error&&pr.data)S.profile=Object.assign({},S.profile,pr.data);
 }
+
 function logout(){try{localStorage.removeItem('pantry_user')}catch(e){}S.uid=null;S.user=null;if(sb){S.inv=[];S.groc=[];S.saved=[];S.used=[]}go('login')}
 
 function render(){
@@ -295,7 +314,7 @@ function render(){
  if(S.screen=='create')h=createH();
  else if(S.screen=='login')h=loginH();
  else if(S.screen=='forgot')h=forgotH();
- else{h=S.tab=='inv'?invH():S.tab=='saved'?savedH():S.tab=='sug'?sugH():grocH();h+=tabsH()}
+ else{h=S.tab=='inv'?invH():S.tab=='saved'?savedH():S.tab=='sug'?sugH():S.tab=='profile'?profileH():grocH();h+=tabsH()}
  a.innerHTML=h;
 }
 function createH(){return '<h1>Create Your Account</h1><p class="sub">Set up Pantry so nothing in your fridge goes to waste.</p>'+
@@ -307,12 +326,12 @@ async function doCreate(){
  for(var i=0;i<f.length;i++)if(!v(f[i][0]))return err('Please enter your '+f[i][1]+'.');
  if(!/^\S+@\S+\.\S+$/.test(v('em')))return err('Please enter a valid email address.');
  var p=v('pw');if(p.length<12||!/[A-Z]/.test(p)||!/[^A-Za-z0-9]/.test(p))return err('Password needs 12+ characters, a capital letter and a special character.');
- if(!sb){S.user=v('us');S.email=v('em');S.pass=p;return go('app','inv')}
+ if(!sb){S.user=v('us');S.email=v('em');S.pass=p;S.profile={first_name:v('fn'),last_name:v('ln'),email:v('em'),phone_number:v('ph'),bio:'',notification_preference:'none'};return go('app','inv')}
  try{
   var r=await sb.from('users').insert({username:v('us'),email:v('em'),password_hash:await sha(p),first_name:v('fn'),last_name:v('ln'),
    phone_number:v('ph')}).select('user_id,username').single();
   if(r.error)return err(r.error.code=='23505'?'That username or email is already taken.':'Could not create account: '+r.error.message);
-  setUser(r.data);await loadAll();go('app','inv');toast('Account created.',1)
+  S.profile={first_name:v('fn'),last_name:v('ln'),email:v('em'),phone_number:v('ph'),bio:'',notification_preference:'none'};setUser(r.data);await loadAll();go('app','inv');toast('Account created.',1)
  }catch(e){fail(e)}}
 function err(m){var e=document.getElementById('e');if(e)e.textContent=m;else toast(m)}
 function loginH(){return '<h1>Welcome Back</h1><p class="sub">Log in to see what is in your kitchen.</p><label for="lu">Username or email</label><input id="lu"><label for="lp">Password</label><input id="lp" type="password"><div class="err" id="e" role="alert"></div><button class="btn acc" onclick="doLogin()">Log in</button>'+
@@ -436,22 +455,37 @@ async function gEdit(id){var g=S.groc.filter(function(x){return x.id==id})[0];if
  else g.n=n;
  render()}
 
-function tabsH(){var t=S.tab;
- return '<nav class="tabs"><button class="tab '+(t=='saved'||t=='sug'?'on':'')+'" onclick="go(\'app\',S.saved.length?\'saved\':\'sug\')"><b>📖</b>Recipes</button><button class="tab mid '+(t=='inv'?'on':'')+'" onclick="go(\'app\',\'inv\')"><b>🧊</b>Food Inventory</button><button class="tab '+(t=='groc'?'on':'')+'" onclick="go(\'app\',\'groc\')"><b>🛒</b>Grocery List</button></nav>'}
 
-// Start: when connected, stay logged in after a refresh and reload saved data
+function profileH(){var p=S.profile||{},full=[p.first_name,p.last_name].filter(Boolean).join(' ')||S.user||'Your profile',initial=(p.first_name||S.user||'U').charAt(0).toUpperCase();
+ return '<div class="profile-grid"><section><div class="profile-card profile-identity"><div class="profile-avatar" aria-hidden="true">'+esc(initial)+'</div><h2>'+esc(full)+'</h2><div class="meta">@'+esc(S.user||'username')+'</div><p class="profile-bio">'+esc(p.bio||'Add a short bio to tell people a little about yourself.')+'</p></div><div class="note">🔒 Your password is private and is never displayed here.</div></section>'+ 
+ '<section class="profile-card"><h1>My Profile</h1><p class="sub">Update your account details and notification preference.</p><div class="profile-fields">'+
+ '<div><label for="pf_fn">First name</label><input id="pf_fn" value="'+esc(p.first_name||'')+'" autocomplete="given-name"></div>'+ 
+ '<div><label for="pf_ln">Last name</label><input id="pf_ln" value="'+esc(p.last_name||'')+'" autocomplete="family-name"></div>'+ 
+ '<div><label for="pf_us">Username</label><input id="pf_us" value="'+esc(S.user||'')+'" autocomplete="username"></div>'+ 
+ '<div><label for="pf_em">Email address</label><input id="pf_em" type="email" value="'+esc(p.email||S.email||'')+'" autocomplete="email"></div>'+ 
+ '<div><label for="pf_ph">Phone number</label><input id="pf_ph" type="tel" value="'+esc(p.phone_number||'')+'" autocomplete="tel"></div>'+ 
+ '<div class="wide"><label for="pf_bio">About me</label><textarea id="pf_bio" maxlength="280" placeholder="Share a little about yourself, your cooking style, or favorite foods…">'+esc(p.bio||'')+'</textarea><div class="meta">Up to 280 characters.</div></div></div>'+ 
+ '<label>Notifications</label><div class="meta">Choose email, text message, or no notifications.</div><div class="profile-radio">'+
+ ['email','text','none'].map(function(x){return '<label><input type="radio" name="pf_notice" value="'+x+'" '+((p.notification_preference||'none')==x?'checked':'')+'> '+(x=='email'?'✉️ Email':x=='text'?'💬 Text':'🔕 None')+'</label>'}).join('')+'</div>'+ 
+ '<div class="err" id="profileErr" role="alert"></div><button class="btn acc" onclick="saveProfile()">Save profile</button></section></div>'}
+async function saveProfile(){var fn=v('pf_fn'),ln=v('pf_ln'),em=v('pf_em'),ph=v('pf_ph'),un=v('pf_us'),bio=v('pf_bio'),notice=document.querySelector('input[name="pf_notice"]:checked');
+ if(!fn||!ln||!em||!un)return profileErr('Please fill in your first name, last name, username, and email address.');
+ if(!/^\S+@\S+\.\S+$/.test(em))return profileErr('Please enter a valid email address.');
+ if(!notice)return profileErr('Choose a notification preference.');
+ var patch={first_name:fn,last_name:ln,email:em,phone_number:ph,username:un,bio:bio,notification_preference:notice.value};
+ if(sb){try{var r=await sb.from('users').update(patch).eq('user_id',S.uid).select('username,email,first_name,last_name,phone_number,bio,notification_preference').single();if(r.error)throw r.error;S.profile=r.data;S.user=r.data.username;try{localStorage.setItem('pantry_user',JSON.stringify({id:S.uid,u:S.user}))}catch(e){}}catch(e){return profileErr('Could not save profile: '+e.message)}}else{S.profile=patch;S.user=un;S.email=em;try{localStorage.setItem('pantry_profile_'+(S.uid||'offline'),JSON.stringify(patch))}catch(e){}}
+ toast('Profile saved.',1);render()}
+function profileErr(m){var e=document.getElementById('profileErr');if(e)e.textContent=m;else toast(m)}
+
+function tabsH(){var t=S.tab;
+ return '<nav class="tabs"><button class="tab '+(t=='profile'?'on':'')+'" onclick="go(\'app\',\'profile\')"><b>👤</b>Profile</button><button class="tab '+(t=='saved'||t=='sug'?'on':'')+'" onclick="go(\'app\',S.saved.length?\'saved\':\'sug\')"><b>📖</b>Recipes</button><button class="tab mid '+(t=='inv'?'on':'')+'" onclick="go(\'app\',\'inv\')"><b>🧊</b>Food Inventory</button><button class="tab '+(t=='groc'?'on':'')+'" onclick="go(\'app\',\'groc\')"><b>🛒</b>Grocery List</button></nav>'}
+
+// Restore the signed-in account and load its profile from Supabase.
 (async function start(){
  if(sb){var s=null;try{s=JSON.parse(localStorage.getItem('pantry_user'))}catch(e){}
   if(s&&s.id){S.uid=s.id;S.user=s.u;S.screen='app';S.tab='inv';S.inv=[];S.groc=[];S.saved=[];S.used=[];
-   try{await loadAll()}catch(e){fail(e)}}}
- render()})();
-</script>
-</body>
-</html>
-(async function start(){
- if(sb){var s=null;try{s=JSON.parse(localStorage.getItem('pantry_user'))}catch(e){}
-  if(s&&s.id){S.uid=s.id;S.user=s.u;S.screen='app';S.tab='inv';S.inv=[];S.groc=[];S.saved=[];
-   try{await loadAll()}catch(e){fail(e)}}}
+   try{await loadAll()}catch(e){fail(e)}}
+ }else{try{var p=JSON.parse(localStorage.getItem('pantry_profile_offline')||'null');if(p){S.profile=p;S.user=p.username;S.email=p.email;S.screen='app'}}catch(e){}}
  render()})();
 </script>
 </body>
