@@ -283,7 +283,31 @@ function until(e){var n=days(e);if(n<0)return'Expired';if(n==0)return'Today';if(
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function v(id){return document.getElementById(id).value.trim()}
 function toast(m,ok){var t=document.getElementById('toast');t.innerHTML='<div class="toast '+(ok?'ok':'')+'" role="alert">'+esc(m)+'</div>';setTimeout(function(){t.innerHTML=''},2600)}
-function go(s,t){S.screen=s;if(t)S.tab=t;S.sel=null;render()}
+function routeForState(){
+ if(S.screen=='login')return '#/login';
+ if(S.screen=='forgot')return '#/forgot-password';
+ if(S.screen=='create')return '#/create-account';
+ if(S.tab=='profile')return '#/profile';
+ if(S.tab=='saved')return '#/recipes/saved';
+ if(S.tab=='sug')return '#/recipes/suggested';
+ if(S.tab=='groc')return '#/grocery-list';
+ return '#/food-inventory';
+}
+function readHashRoute(){
+ var path=(location.hash||'').replace(/^#\/?/,'').split('?')[0];
+ if(path=='profile'){S.screen='app';S.tab='profile'}
+ else if(path=='food-inventory'||path=='inventory'){S.screen='app';S.tab='inv'}
+ else if(path=='grocery-list'){S.screen='app';S.tab='groc'}
+ else if(path=='recipes'||path=='recipes/saved'){S.screen='app';S.tab='saved'}
+ else if(path=='recipes/suggested'){S.screen='app';S.tab='sug'}
+ else if(path=='login'){S.screen='login'}
+ else if(path=='forgot-password'){S.screen='forgot'}
+ else if(path=='create-account'||path==''){S.screen='create'}
+ else return false;
+ return true;
+}
+function go(s,t){S.screen=s;if(t)S.tab=t;S.sel=null;var route=routeForState();if(location.hash!==route)location.hash=route;render()}
+window.addEventListener('hashchange',function(){if(readHashRoute())render()});
 function icon(n){var m={spinach:'🥬',egg:'🥚',milk:'🥛',rice:'🍚',tomato:'🍅',bread:'🍞',butter:'🧈',apple:'🍎'};n=n.toLowerCase();for(var k in m)if(n.indexOf(k)>-1)return m[k];return'🍽️'}
 
 // ---------- Database helpers (only used when USE_SUPABASE is true) ----------
@@ -525,6 +549,7 @@ function tabsH(){var t=S.tab;
   if(s&&s.id){S.uid=s.id;S.user=s.u;S.screen='app';S.tab='inv';S.inv=[];S.groc=[];S.saved=[];S.mine=[];S.used=[];
    try{await loadAll()}catch(e){fail(e)}}
  }else{try{var p=JSON.parse(localStorage.getItem('pantry_profile_offline')||'null');if(p){S.profile=p;S.user=p.username;S.email=p.email;S.screen='app'}}catch(e){}}
+ if(location.hash){if(!readHashRoute())location.hash=routeForState()}else location.hash=routeForState();
  render()})();
 </script>
 </body>
