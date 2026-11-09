@@ -138,6 +138,10 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
         border-bottom: 1px solid var(--line);
     }
 
+    .tab-spacer {
+        flex: 1 1 auto;
+    }
+
     .tab {
         flex: 0 0 auto;
         min-width: 130px;
@@ -199,6 +203,7 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
 
 /* Additional adjustments for smaller phones */
 @media (max-width: 480px) {
+    .tab-spacer { display:none; }
 
     .phone {
         padding-left: 14px;
@@ -512,7 +517,7 @@ async function saveProfile(){var fn=v('pf_fn'),ln=v('pf_ln'),em=v('pf_em'),ph=v(
 function profileErr(m){var e=document.getElementById('profileErr');if(e)e.textContent=m;else toast(m)}
 
 function tabsH(){var t=S.tab;
- return '<nav class="tabs"><button class="tab logout-tab" type="button" onclick="logout()">Log out</button><button class="tab '+(t=='profile'?'on':'')+'" onclick="go(\'app\',\'profile\')"><b>👤</b>Profile</button><button class="tab '+(t=='saved'||t=='sug'?'on':'')+'" onclick="go(\'app\',\'saved\')"><b>📖</b>Recipes</button><button class="tab mid '+(t=='inv'?'on':'')+'" onclick="go(\'app\',\'inv\')"><b>🧊</b>Food Inventory</button><button class="tab '+(t=='groc'?'on':'')+'" onclick="go(\'app\',\'groc\')"><b>🛒</b>Grocery List</button></nav>'}
+ return '<nav class="tabs"><button class="tab logout-tab" type="button" onclick="logout()">Log out</button><button class="tab '+(t=='profile'?'on':'')+'" onclick="go(\'app\',\'profile\')"><b>👤</b>Profile</button><span class="tab-spacer" aria-hidden="true"></span><button class="tab '+(t=='saved'||t=='sug'?'on':'')+'" onclick="go(\'app\',\'saved\')"><b>📖</b>Recipes</button><button class="tab mid '+(t=='inv'?'on':'')+'" onclick="go(\'app\',\'inv\')"><b>🧊</b>Food Inventory</button><button class="tab '+(t=='groc'?'on':'')+'" onclick="go(\'app\',\'groc\')"><b>🛒</b>Grocery List</button></nav>'}
 
 // Restore the signed-in account and load its profile from Supabase.
 (async function start(){
