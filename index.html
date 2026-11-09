@@ -44,6 +44,11 @@ input:focus,button:focus-visible{outline:3px solid var(--acc);outline-offset:1px
 .chk{display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:600;cursor:pointer} /* NEW: "No expiration date" checkbox */
 .chk input{width:20px;height:20px;padding:0;margin:0;flex:none;accent-color:var(--ok)}
 input:disabled{opacity:.5}
+select{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit} /* NEW: unit type dropdown */
+.ugrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0 10px} /* NEW: unit type / measurement / quantity */
+.ingrow{border:1.5px solid var(--line);border-radius:12px;padding:4px 12px 12px;margin-bottom:10px} /* NEW: one recipe ingredient */
+.ingrow .inhead{display:flex;gap:8px;align-items:flex-end}.ingrow .inhead>div{flex:1}
+.ingrow .rm{border:0;background:none;color:var(--mute);font-size:1.1rem;cursor:pointer;padding:12px 4px}
 .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1.5px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));display:flex;align-items:flex-end;justify-content:center;gap:10px;max-width:480px;margin:0 auto}
 .tab{flex:1;border:0;background:none;color:var(--mute);font:inherit;font-size:.85rem;padding:8px 4px;border-radius:12px;cursor:pointer}
 .tab b{display:block;font-size:1.3rem}
@@ -75,13 +80,13 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
 .mini{border:0;background:none;color:var(--mute);font:inherit;text-decoration:underline;cursor:pointer}
 .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--bad);color:#fff;padding:10px 16px;border-radius:10px;z-index:20;max-width:90%}
 .toast.ok{background:var(--ok)}
-
+ 
 /* ==========================================
    DESKTOP RESPONSIVE DESIGN
    ========================================== */
-
+ 
 @media (min-width: 768px) {
-
+ 
     /* Expand the main application */
     .phone {
         max-width: 1200px;
@@ -89,72 +94,72 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
         margin: 0 auto;
         padding: 100px 40px 120px;
     }
-
+ 
     /* Make headings more prominent */
     h1 {
         font-size: 2.5rem;
     }
-
+ 
     /* Give inventory items more room */
     .item {
         padding: 16px;
         gap: 16px;
         border-radius: 14px;
     }
-
+ 
     .pic {
         width: 56px;
         height: 56px;
         font-size: 2rem;
     }
-
+ 
     .name {
         font-size: 1.05rem;
     }
-
+ 
     .meta {
         font-size: 0.95rem;
     }
-
+ 
     /* Move navigation to the top of the page */
     .tabs {
         top: 0;
         bottom: auto;
         left: 0;
         right: 0;
-
+ 
         width: 100%;
         max-width: none;
         margin: 0;
-
+ 
         padding: 12px 40px;
-
+ 
         justify-content: flex-end;
         align-items: center;
         gap: 16px;
-
+ 
         background: var(--card);
         border-top: none;
         border-bottom: 1px solid var(--line);
     }
-
+ 
     .tab-spacer {
         flex: 1 1 auto;
     }
-
+ 
     .tab {
         flex: 0 0 auto;
         min-width: 130px;
         padding: 12px 18px;
         font-size: 0.95rem;
     }
-
+ 
     .tab b {
         display: inline;
         margin-right: 8px;
         font-size: 1.1rem;
     }
-
+ 
     /* Remove the raised center-tab effect on desktop */
     .tab.mid {
         flex: 0 0 auto;
@@ -162,7 +167,7 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
         padding: 12px 18px;
         border-radius: 12px;
     }
-
+ 
     /* Position the floating add button */
     .fab {
         right: max(32px, calc((100vw - 1200px) / 2 + 32px));
@@ -171,27 +176,27 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
         height: 76px;
         font-size: 2.8rem;
     }
-
+ 
     /* Expand the action bar when an item is selected */
     .actionbar {
         max-width: min(600px, calc(100vw - 248px));
         bottom: 32px;
         padding: 0 24px;
     }
-
+ 
     /* Make the add/edit modal wider */
     .sheet {
         max-width: 600px;
         padding: 28px;
         border-radius: 20px;
     }
-
+ 
     /* Keep the login and account forms readable */
     #app > h1,
     #app > .sub {
         max-width: 850px;
     }
-
+ 
     #app > label,
     #app > input,
     #app > .btn,
@@ -200,29 +205,29 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
         max-width: 850px;
     }
 }
-
+ 
 /* Additional adjustments for smaller phones */
 @media (max-width: 480px) {
     .tab-spacer { display:none; }
-
+ 
     .phone {
         padding-left: 14px;
         padding-right: 14px;
     }
-
+ 
     h1 {
         font-size: 1.75rem;
     }
-
+ 
     .item {
         gap: 8px;
         padding: 9px;
     }
-
+ 
     .exp {
         font-size: 0.75rem;
     }
-
+ 
     .meta {
         font-size: 0.8rem;
     }
@@ -243,7 +248,7 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
 .profile-radio input{width:auto;accent-color:var(--ok)}
 .profile-radio label:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 @media(max-width:700px){.profile-grid{grid-template-columns:1fr}.profile-fields{grid-template-columns:1fr}.profile-fields .wide{grid-column:auto}}
-
+ 
 </style>
 </head>
 <body>
@@ -259,23 +264,46 @@ const SUPABASE_URL = 'https://viqwwurtbiqbehpichjv.supabase.co'   // <-- paste h
 const SUPABASE_KEY = 'sb_publishable_MH5CHLdfcOUYkkJOIRvQvg_-0TV6Ohg'   // <-- paste here
 const USE_SUPABASE = true                       // <-- change to true once credentials are filled in
 // =====================================================================
-
+ 
 var sb=null;
 if(USE_SUPABASE){
  if(window.supabase)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
  else setTimeout(function(){toast('Could not load Supabase. Check your internet connection.')},0);
 }
-
+ 
 var S={screen:'create',tab:'inv',sel:null,user:null,uid:null,
-inv:[{id:1,n:'Spinach',q:1,d:'Bagged, 5 oz',e:off(1),i:'🥬'},{id:2,n:'Eggs',q:6,d:'',e:off(6),i:'🥚'},{id:3,n:'Milk',q:1,d:'Half gallon',e:off(3),i:'🥛'},{id:4,n:'Rice',q:2,d:'',e:off(200),i:'🍚'},{id:5,n:'Tomatoes',q:4,d:'',e:off(9),i:'🍅'}],
+inv:[{id:1,n:'Spinach',q:1,u:'oz',a:5,d:'Bagged',e:off(1),i:'🥬'},{id:2,n:'Eggs',q:6,u:'individual',d:'',e:off(6),i:'🥚'},{id:3,n:'Milk',q:1,u:'gallon',a:0.5,d:'',e:off(3),i:'🥛'},{id:4,n:'Rice',q:2,u:'lb',a:2,d:'',e:off(200),i:'🍚'},{id:5,n:'Tomatoes',q:4,u:'individual',d:'',e:off(9),i:'🍅'}],
 groc:[{id:1,n:'Bread',done:false},{id:2,n:'Butter',done:true}],
 saved:[0],mine:[],used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none'},nid:10,gopen:false}; // CHANGED: added used:[] (items marked as used)
 var MAXQ=99; // NEW: max quantity for an item
+// NEW: unit types. [singular, plural]
+var UNITS={individual:['individual','individual'],oz:['oz','oz'],lb:['lb','lbs'],g:['g','g'],kg:['kg','kg'],'fl oz':['fl oz','fl oz'],ml:['ml','ml'],liter:['liter','liters'],cup:['cup','cups'],tbsp:['tbsp','tbsp'],tsp:['tsp','tsp'],pint:['pint','pints'],quart:['quart','quarts'],gallon:['gallon','gallons']};
+function num(n){return String(+(+n).toFixed(2))}
+function uname(u,a){var x=UNITS[u];return x?(+a<=1?x[0]:x[1]):u}
+function isInd(u){return !u||u=='individual'}
+// "x6" / "16 oz" / "2 × 16 oz"
+function amt(x){if(isInd(x.u))return 'x'+num(x.q);return (+x.q>1?num(x.q)+' × ':'')+num(x.a)+' '+uname(x.u,x.a)}
+// recipe ingredients can be old plain text or {n,u,a,q}
+function ingObj(g){return typeof g=='string'?{n:g,u:'individual',a:null,q:null}:g}
+function ingText(g){g=ingObj(g);if(isInd(g.u))return (g.q?num(g.q)+' ':'')+esc(g.n);return (+g.q>1?num(g.q)+' × ':'')+num(g.a)+' '+esc(uname(g.u,g.a))+' '+esc(g.n)}
+// Unit type -> unit measurement -> quantity (measurement hidden for "individual")
+function unitBox(u,a,q,o){o=o||{};u=u||'individual';
+ return '<div class="unitbox"><div class="ugrid"><div><label>Unit type</label><select class="uu" aria-label="Unit type" onchange="uToggle(this)">'+Object.keys(UNITS).map(function(k){return '<option value="'+k+'"'+(k==u?' selected':'')+'>'+(k=='individual'?'Individual':k)+'</option>'}).join('')+'</select></div>'+
+ '<div class="uaw'+(isInd(u)?' hide':'')+'"><label>Unit measurement <span class="meta ul">('+esc(u)+')</span></label><input class="ua" aria-label="Unit measurement" type="number" min="0" step="any" placeholder="e.g. 16" value="'+(a==null?'':num(a))+'"></div>'+
+ '<div><label>Quantity'+(o.qmax?' (max '+o.qmax+')':'')+'</label><input class="uq" aria-label="Quantity" type="number" min="'+(o.qint?1:0)+'" step="'+(o.qint?1:'any')+'"'+(o.qmax?' max="'+o.qmax+'"':'')+' value="'+(q==null||q===''?'':num(q))+'"></div></div></div>'}
+function uToggle(sel){var b=sel.closest('.unitbox');b.querySelector('.uaw').classList.toggle('hide',isInd(sel.value));b.querySelector('.ul').textContent='('+sel.value+')'}
+function readUnit(b,o){o=o||{};var u=b.querySelector('.uu').value,q=b.querySelector('.uq').value.trim(),a=b.querySelector('.ua').value.trim();
+ if(isInd(u))a=null;else{if(!a)return 'Please enter the unit measurement (for example 16 for 16 '+u+').';a=+a;if(!(a>0))return 'Please enter a unit measurement greater than 0.';if(a>10000)return 'Please enter a unit measurement of 10,000 or less.'}
+ if(!q)return 'Please enter a quantity.';q=+q;
+ if(!(q>0))return 'Please enter a quantity greater than 0.';
+ if(o.qint&&!Number.isInteger(q))return 'Please enter a whole number for quantity.';
+ if(o.qmax&&q>o.qmax)return 'Please enter a quantity of '+o.qmax+' or less.';
+ return {u:u,a:a,q:q}}
 function maxExp(){var d=new Date();d.setFullYear(d.getFullYear()+3);return d.toISOString().slice(0,10)} // NEW: latest allowed expiration (3 years out)
-var R=[{n:'Spinach Egg Scramble',t:'10 min',ing:['Spinach','Eggs'],st:['Whisk eggs.','Wilt spinach in a pan.','Add eggs and stir until set.']},
-{n:'Tomato Rice Bowl',t:'25 min',ing:['Rice','Tomatoes','Onion'],st:['Cook rice.','Saute onion and tomatoes.','Serve over rice.']},
-{n:'French Toast',t:'15 min',ing:['Bread','Eggs','Milk'],st:['Whisk eggs and milk.','Dip bread.','Fry until golden.']},
-{n:'Creamy Rice Pudding',t:'35 min',ing:['Rice','Milk','Sugar'],st:['Simmer rice in milk.','Stir in sugar.','Cool and serve.']}];
+var R=[{n:'Spinach Egg Scramble',t:'10 min',ing:[{n:'Spinach',u:'oz',a:5,q:1},{n:'Eggs',u:'individual',q:3}],st:['Whisk eggs.','Wilt spinach in a pan.','Add eggs and stir until set.']},
+{n:'Tomato Rice Bowl',t:'25 min',ing:[{n:'Rice',u:'cup',a:1,q:1},{n:'Tomatoes',u:'individual',q:2},{n:'Onion',u:'individual',q:1}],st:['Cook rice.','Saute onion and tomatoes.','Serve over rice.']},
+{n:'French Toast',t:'15 min',ing:[{n:'Bread',u:'individual',q:4},{n:'Eggs',u:'individual',q:2},{n:'Milk',u:'cup',a:0.5,q:1}],st:['Whisk eggs and milk.','Dip bread.','Fry until golden.']},
+{n:'Creamy Rice Pudding',t:'35 min',ing:[{n:'Rice',u:'cup',a:0.5,q:1},{n:'Milk',u:'cup',a:2,q:1},{n:'Sugar',u:'cup',a:0.25,q:1}],st:['Simmer rice in milk.','Stir in sugar.','Cool and serve.']}];
 function off(n){var d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
 function today(){return off(0)}
 function days(e){return Math.round((new Date(e+'T00:00')-new Date(today()+'T00:00'))/864e5)}
@@ -309,9 +337,9 @@ function readHashRoute(){
 function go(s,t){S.screen=s;if(t)S.tab=t;S.sel=null;var route=routeForState();if(location.hash!==route)location.hash=route;render()}
 window.addEventListener('hashchange',function(){if(readHashRoute())render()});
 function icon(n){var m={spinach:'🥬',egg:'🥚',milk:'🥛',rice:'🍚',tomato:'🍅',bread:'🍞',butter:'🧈',apple:'🍎'};n=n.toLowerCase();for(var k in m)if(n.indexOf(k)>-1)return m[k];return'🍽️'}
-
+ 
 // ---------- Database helpers (only used when USE_SUPABASE is true) ----------
-function rowInv(r){return{id:r.item_id,n:r.item_name,q:r.quantity,d:r.details||'',e:r.expiration_date||'',i:r.icon||icon(r.item_name)}}
+function rowInv(r){return{id:r.item_id,n:r.item_name,q:r.quantity,u:r.unit_type||'individual',a:r.unit_amount,d:r.details||'',e:r.expiration_date||'',i:r.icon||icon(r.item_name)}}
 function rowMine(r){return{n:r.recipe_name,t:r.cook_time||'',ing:r.ingredients||[],st:r.steps||[]}} // NEW
 function rowG(r){return{id:r.grocery_item_id,n:r.item_name,done:r.is_checked}}
 function chk(r){if(r.error)throw r.error;return r.data}
@@ -344,9 +372,9 @@ async function loadAll(){
  var pr=await sb.from('users').select('username,email,first_name,last_name,phone_number,bio,notification_preference').eq('user_id',S.uid).single();
  if(!pr.error&&pr.data)S.profile=Object.assign({},S.profile,pr.data);
 }
-
+ 
 function logout(){try{localStorage.removeItem('pantry_user')}catch(e){}S.uid=null;S.user=null;if(sb){S.inv=[];S.groc=[];S.saved=[];S.mine=[];S.used=[]}go('login')}
-
+ 
 function render(){
  var a=document.getElementById('app'),h='';
  if(S.screen=='create')h=createH();
@@ -386,7 +414,7 @@ async function doLogin(){var u=v('lu'),p=v('lp');
  }catch(e){fail(e)}}
 function forgotH(){return '<h1>Reset Password</h1><p class="sub">Enter the email linked to your account.</p><label for="fe">Email address</label><input id="fe" type="email"><div class="err" id="e" role="alert"></div><div id="ok"></div><button class="btn acc" onclick="doForgot()">Send recovery link</button><button class="link" style="margin-top:14px" onclick="go(\'login\')">Back to log in</button>'}
 function doForgot(){if(!/^\S+@\S+\.\S+$/.test(v('fe')))return err('Please enter a valid email address.');err('');document.getElementById('ok').innerHTML='<div class="note">Check your email for a password recovery link.</div>'}
-
+ 
 function invH(){
  var soon=S.inv.filter(function(x){if(!x.e)return false;var d=days(x.e);return d==7||d==3||d==1}); // CHANGED: skip items with no expiration
  var h='<h1>Food Inventory</h1><p class="sub">Soonest to expire first.</p>';
@@ -394,7 +422,7 @@ function invH(){
  var l=S.inv.slice().sort(function(a,b){if(!a.e)return 1;if(!b.e)return -1;return a.e<b.e?-1:1}); // CHANGED: no-expiration items go last
  if(!l.length)h+='<div class="note">Your inventory is empty. Tap + to add your first item.</div>';
  l.forEach(function(x){var d=x.e?days(x.e):999,c=d<0?'gone':d<=3?'soon':'fine';
- h+='<div class="item '+(S.sel==x.id?'sel':'')+'"><input type="checkbox" class="used" aria-label="Mark '+esc(x.n)+' as used" onchange="useItem('+x.id+')"><div class="pic">'+x.i+'</div><div class="grow"><div class="name">'+esc(x.n)+' <span class="meta">x'+x.q+'</span></div><div class="meta">'+(x.d?esc(x.d)+' &middot; ':'')+(x.e||'No expiration date')+'</div></div><div class="exp '+c+'">'+(x.e?until(x.e):'No exp.')+'</div><button class="bubble" aria-label="Select '+esc(x.n)+'" onclick="pick('+x.id+')"></button></div>'}); // CHANGED: added "used" checkbox + details only show when there are details
+ h+='<div class="item '+(S.sel==x.id?'sel':'')+'"><input type="checkbox" class="used" aria-label="Mark '+esc(x.n)+' as used" onchange="useItem('+x.id+')"><div class="pic">'+x.i+'</div><div class="grow"><div class="name">'+esc(x.n)+' <span class="meta">'+amt(x)+'</span></div><div class="meta">'+(x.d?esc(x.d)+' &middot; ':'')+(x.e||'No expiration date')+'</div></div><div class="exp '+c+'">'+(x.e?until(x.e):'No exp.')+'</div><button class="bubble" aria-label="Select '+esc(x.n)+'" onclick="pick('+x.id+')"></button></div>'}); // CHANGED: added "used" checkbox + details only show when there are details
  h+='<button class="fab" aria-label="Add item" onclick="openForm()">+</button>';
  if(S.sel)h+='<div class="actionbar"><button class="btn acc" onclick="openForm('+S.sel+')">Edit</button><button class="btn ghost" style="background:var(--card)" onclick="delItem('+S.sel+')">Delete</button></div>';
  return h}
@@ -414,14 +442,13 @@ function openForm(id){var x=S.inv.filter(function(i){return i.id==id})[0]||{n:''
  var m=document.createElement('div');m.className='modal';m.id='modal';
  var ne=!!id&&!x.e; // NEW: editing an item that has no expiration date
  // CHANGED: title case, quantity min/max, date min/max, "No expiration date" checkbox
- m.innerHTML='<div class="sheet"><h2>'+(id?'Edit Item':'Add Item')+'</h2><label for="in">Name</label><input id="in" value="'+esc(x.n)+'"><label for="iq">Quantity (max '+MAXQ+')</label><input id="iq" type="number" min="1" max="'+MAXQ+'" value="'+x.q+'"><label for="ie">Expiration date</label><input id="ie" type="date" min="'+today()+'" max="'+maxExp()+'" value="'+x.e+'"'+(ne?' disabled':'')+'><label class="chk"><input type="checkbox" id="ne"'+(ne?' checked':'')+' onchange="document.getElementById(\'ie\').disabled=this.checked">No expiration date</label><label for="id">Details (optional)</label><input id="id" value="'+esc(x.d)+'"><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveItem('+(id||0)+')">Save</button></div></div>';
+ m.innerHTML='<div class="sheet"><h2>'+(id?'Edit Item':'Add Item')+'</h2><label for="in">Name</label><input id="in" value="'+esc(x.n)+'"><div id="iunit">'+unitBox(x.u,x.a,x.q,{qint:1,qmax:MAXQ})+'</div><label for="ie">Expiration date</label><input id="ie" type="date" min="'+today()+'" max="'+maxExp()+'" value="'+x.e+'"'+(ne?' disabled':'')+'><label class="chk"><input type="checkbox" id="ne"'+(ne?' checked':'')+' onchange="document.getElementById(\'ie\').disabled=this.checked">No expiration date</label><label for="id">Details (optional)</label><input id="id" value="'+esc(x.d)+'"><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveItem('+(id||0)+')">Save</button></div></div>';
  document.body.appendChild(m)}
 function closeM(){var m=document.getElementById('modal');if(m)m.remove()}
-async function saveItem(id){var n=v('in'),q=v('iq'),e=v('ie'),d=v('id'),ne=document.getElementById('ne').checked;
- if(!n)return err('Please enter a name.');if(!q)return err('Please enter a quantity.');
- if(+q<1)return err('Please enter a quantity greater than 0.');
- if(+q>MAXQ)return err('Please enter a quantity of '+MAXQ+' or less.'); // NEW: max quantity
- if(!Number.isInteger(+q))return err('Please enter a whole number for quantity.'); // NEW
+async function saveItem(id){var n=v('in'),e=v('ie'),d=v('id'),ne=document.getElementById('ne').checked;
+ if(!n)return err('Please enter a name.');
+ var un=readUnit(document.querySelector('#iunit .unitbox'),{qint:1,qmax:MAXQ}); // NEW: unit type, measurement, quantity
+ if(typeof un=='string')return err(un);var q=un.q;
  if(ne)e=''; // NEW: no expiration date
  else{
   if(!e)return err('Please enter an expiration date or check "No expiration date".');
@@ -429,18 +456,21 @@ async function saveItem(id){var n=v('in'),q=v('iq'),e=v('ie'),d=v('id'),ne=docum
   if(e>maxExp())return err('Please enter a date within 3 years from today.'); // NEW: max date
  }
  if(sb){
-  try{var row={item_name:n,quantity:+q,expiration_date:e||null,details:d||null,icon:icon(n)}; // CHANGED: null when no expiration
-   var r=id?await sb.from('inventory_items').update(row).eq('item_id',id).select().single()
-           :await sb.from('inventory_items').insert(Object.assign({user_id:S.uid},row)).select().single();
-   var x=rowInv(chk(r));
+  try{var row={item_name:n,quantity:+q,unit_type:un.u,unit_amount:un.a,expiration_date:e||null,details:d||null,icon:icon(n)}; // CHANGED: units; null when no expiration
+   var send=function(rw){return id?sb.from('inventory_items').update(rw).eq('item_id',id).select().single()
+           :sb.from('inventory_items').insert(Object.assign({user_id:S.uid},rw)).select().single()};
+   var r=await send(row);
+   // NEW: if the database doesn't have the unit columns yet, still save the item (without units)
+   if(r.error&&/unit_/.test(r.error.message||'')){delete row.unit_type;delete row.unit_amount;r=await send(row);if(!r.error)toast('Saved, but units need a database update to be stored.')}
+   var x=rowInv(chk(r));if(!r.data.unit_type){x.u=un.u;x.a=un.a}
    if(id)S.inv=S.inv.map(function(i){return i.id==id?x:i});else S.inv.push(x);
   }catch(er){return err('Could not save: '+er.message)}
- }else if(id){var x=S.inv.filter(function(i){return i.id==id})[0];x.n=n;x.q=+q;x.e=e;x.d=d;x.i=icon(n)}
- else S.inv.push({id:S.nid++,n:n,q:+q,e:e,d:d,i:icon(n)});
+ }else if(id){var x=S.inv.filter(function(i){return i.id==id})[0];x.n=n;x.q=+q;x.u=un.u;x.a=un.a;x.e=e;x.d=d;x.i=icon(n)}
+ else S.inv.push({id:S.nid++,n:n,q:+q,u:un.u,a:un.a,e:e,d:d,i:icon(n)});
  closeM();S.sel=null;render()}
-
-function has(n){return S.inv.some(function(x){return x.n.toLowerCase()==n.toLowerCase()})}
-function ingList(ing){return '<ul>'+ing.map(function(g){return '<li class="'+(has(g)?'have':'miss')+'">'+esc(g)+(has(g)?' (in inventory)':' (need to buy)')+'</li>'}).join('')+'</ul>'}
+ 
+function has(n){if(n&&typeof n=='object')n=n.n;return S.inv.some(function(x){return x.n.toLowerCase()==n.toLowerCase()})}
+function ingList(ing){return '<ul>'+ing.map(function(g){g=ingObj(g);return '<li class="'+(has(g)?'have':'miss')+'">'+ingText(g)+(has(g)?' (in inventory)':' (need to buy)')+'</li>'}).join('')+'</ul>'}
 function savedH(){
  var l=S.saved,m=S.mine;
  var h='<div class="between"><h1>Saved Recipes</h1><span class="pill">Saved</span></div><p class="sub">Tap a recipe to see what you need.</p>';
@@ -453,11 +483,20 @@ function savedH(){
 // NEW: form for adding your own recipe
 function openRecipeForm(){
  var m=document.createElement('div');m.className='modal';m.id='modal';
- m.innerHTML='<div class="sheet"><h2>Add Your Own Recipe</h2><label for="rn">Recipe name</label><input id="rn" maxlength="60"><label for="rt">Cook time (optional)</label><input id="rt" maxlength="20" placeholder="e.g. 20 min"><label for="ri">Ingredients (one per line)</label><textarea id="ri" placeholder="Eggs&#10;Spinach&#10;Cheese"></textarea><label for="rs">Steps (one per line)</label><textarea id="rs" placeholder="Whisk the eggs.&#10;Cook the spinach.&#10;Add eggs and stir."></textarea><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveRecipe()">Save recipe</button></div></div>';
- document.body.appendChild(m);document.getElementById('rn').focus()}
+ m.innerHTML='<div class="sheet"><h2>Add Your Own Recipe</h2><label for="rn">Recipe name</label><input id="rn" maxlength="60"><label for="rt">Cook time (optional)</label><input id="rt" maxlength="20" placeholder="e.g. 20 min"><label>Ingredients</label><div class="meta">Choose Individual to just count items (3 eggs), or pick a unit and enter the measurement (5 oz).</div><div id="ingrows" style="margin-top:8px"></div><button class="btn ghost" style="margin-top:0;padding:10px" onclick="addIngRow()">+ Add another ingredient</button><label for="rs">Steps (one per line)</label><textarea id="rs" placeholder="Whisk the eggs.&#10;Cook the spinach.&#10;Add eggs and stir."></textarea><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveRecipe()">Save recipe</button></div></div>';
+ document.body.appendChild(m);addIngRow();addIngRow();document.getElementById('rn').focus()}
+function addIngRow(){var d=document.createElement('div');d.className='ingrow';
+ d.innerHTML='<div class="inhead"><div><label>Ingredient</label><input class="inm" aria-label="Ingredient name" maxlength="40" placeholder="e.g. Spinach"></div><button class="rm" aria-label="Remove ingredient" onclick="this.closest(\'.ingrow\').remove()">&#10005;</button></div>'+unitBox('individual',null,1);
+ document.getElementById('ingrows').appendChild(d)}
+function readIngs(){var out=[],rows=document.querySelectorAll('#ingrows .ingrow');
+ for(var i=0;i<rows.length;i++){var n=rows[i].querySelector('.inm').value.trim();if(!n)continue;
+  var un=readUnit(rows[i].querySelector('.unitbox'));if(typeof un=='string')return n+': '+un;
+  out.push({n:n,u:un.u,a:un.a,q:un.q})}
+ return out}
 function lines(id){return document.getElementById(id).value.split('\n').map(function(x){return x.trim()}).filter(Boolean)}
-async function saveRecipe(){var n=v('rn'),t=v('rt'),ing=lines('ri'),st=lines('rs');
+async function saveRecipe(){var n=v('rn'),t=v('rt'),ing=readIngs(),st=lines('rs');
  if(!n)return err('Please enter a recipe name.');
+ if(typeof ing=='string')return err(ing);
  if(!ing.length)return err('Please add at least one ingredient.');
  if(!st.length)return err('Please add at least one step.');
  if(S.mine.some(function(r){return r.n.toLowerCase()==n.toLowerCase()}))return err('You already have a recipe with that name.');
@@ -469,7 +508,7 @@ async function delMine(k){var r=S.mine[k];if(!r||!confirm('Delete "'+r.n+'"?'))r
  if(sb){try{chk(await sb.from('saved_recipes').delete().eq('user_id',S.uid).eq('recipe_name',r.n).not('ingredients','is',null))}catch(e){return fail(e)}}
  S.mine.splice(k,1);render()}
 async function addMissingMine(k){
- try{var m=S.mine[k].ing.filter(function(g){return !has(g)});for(var i=0;i<m.length;i++)await addG(m[i])}catch(e){return fail(e)}
+ try{var m=S.mine[k].ing.filter(function(g){return !has(g)});for(var i=0;i<m.length;i++)await addG(ingObj(m[i]).n)}catch(e){return fail(e)}
  toast('Added to your grocery list.',1)}
 async function unsave(i){
  if(sb){try{chk(await sb.from('saved_recipes').delete().eq('user_id',S.uid).eq('recipe_name',R[i].n))}catch(e){return fail(e)}}
@@ -478,19 +517,19 @@ function sugH(){
  var h='<div style="margin-bottom:10px"><button class="mini" type="button" onclick="go(\'app\',\'saved\')">← Back to saved recipes</button></div><div class="between"><h1>Suggested Recipes</h1><span class="pill sug">Suggested</span></div><p class="sub">Ideas based on what is in your inventory.</p>';
  if(!S.inv.length)return h+'<div class="note" style="border-color:var(--bad)">Add food items to see recipe ideas.</div><button class="btn acc" onclick="go(\'app\',\'inv\')">Go to inventory</button>';
  R.map(function(r,i){return{r:r,i:i,m:r.ing.filter(function(g){return !has(g)}),h:r.ing.filter(has).length}}).filter(function(o){return o.h>0}).sort(function(a,b){return a.m.length-b.m.length}).forEach(function(o){
- h+='<details><summary><span>'+o.r.n+' <span class="meta">'+o.r.t+'</span></span></summary><p class="meta">'+(o.m.length?'Missing: '+o.m.join(', '):'You have everything.')+'</p><ol>'+o.r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol><div class="row">'+(S.saved.indexOf(o.i)<0?'<button class="mini" onclick="save('+o.i+')">Save recipe</button>':'<span class="meta">Saved</span>')+(o.m.length?'<button class="mini" onclick="addMissing('+o.i+')">Add missing to grocery list</button>':'')+'</div></details>'});
+ h+='<details><summary><span>'+o.r.n+' <span class="meta">'+o.r.t+'</span></span></summary><p class="meta">'+(o.m.length?'Missing: '+o.m.map(function(g){return esc(ingObj(g).n)}).join(', '):'You have everything.')+'</p><b>Ingredients</b>'+ingList(o.r.ing)+'<b>Steps</b><ol>'+o.r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol><div class="row">'+(S.saved.indexOf(o.i)<0?'<button class="mini" onclick="save('+o.i+')">Save recipe</button>':'<span class="meta">Saved</span>')+(o.m.length?'<button class="mini" onclick="addMissing('+o.i+')">Add missing to grocery list</button>':'')+'</div></details>'});
  return h}
 async function save(i){
  if(sb){try{chk(await sb.from('saved_recipes').insert({user_id:S.uid,recipe_name:R[i].n}).select().single())}catch(e){return fail(e)}}
  S.saved.push(i);toast('Recipe saved.',1);render()}
 async function addMissing(i){
- try{var m=R[i].ing.filter(function(g){return !has(g)});for(var k=0;k<m.length;k++)await addG(m[k])}catch(e){return fail(e)}
+ try{var m=R[i].ing.filter(function(g){return !has(g)});for(var k=0;k<m.length;k++)await addG(ingObj(m[k]).n)}catch(e){return fail(e)}
  toast('Added to your grocery list.',1)}
 async function addG(n,src){
  if(S.groc.some(function(x){return x.n.toLowerCase()==n.toLowerCase()}))return;
  if(sb)S.groc.push(rowG(chk(await sb.from('grocery_list_items').insert({user_id:S.uid,item_name:n,source_item_id:src||null}).select().single())));
  else S.groc.push({id:S.nid++,n:n,done:false})}
-
+ 
 function grocH(){
  var h='<h1>Grocery List</h1><p class="sub">Check items off as you shop.</p><div class="row"><input id="gi" placeholder="Add an item" aria-label="Add an item"><button class="btn acc" style="width:auto;margin:0;padding:12px 18px" onclick="gAdd()">Add</button></div>';
  h+='<button class="btn ghost" style="margin-top:12px" onclick="S.gopen=!S.gopen;render()">'+(S.gopen?'Hide':'See')+' suggested items</button>';
@@ -517,8 +556,8 @@ async function gEdit(id){var g=S.groc.filter(function(x){return x.id==id})[0];if
  if(sb){try{g.n=chk(await sb.from('grocery_list_items').update({item_name:n}).eq('grocery_item_id',id).select().single()).item_name}catch(e){return fail(e)}}
  else g.n=n;
  render()}
-
-
+ 
+ 
 function profileH(){var p=S.profile||{},full=[p.first_name,p.last_name].filter(Boolean).join(' ')||S.user||'Your profile',initial=(p.first_name||S.user||'U').charAt(0).toUpperCase();
  return '<div class="profile-grid"><section><div class="profile-card profile-identity"><div class="profile-avatar" aria-hidden="true">'+esc(initial)+'</div><h2>'+esc(full)+'</h2><div class="meta">@'+esc(S.user||'username')+'</div><p class="profile-bio">'+esc(p.bio||'Add a short bio to tell people a little about yourself.')+'</p></div><div class="note">🔒 Your password is private and is never displayed here.</div></section>'+ 
  '<section class="profile-card"><h1>My Profile</h1><p class="sub">Update your account details and notification preference.</p><div class="profile-fields">'+
@@ -539,10 +578,10 @@ async function saveProfile(){var fn=v('pf_fn'),ln=v('pf_ln'),em=v('pf_em'),ph=v(
  if(sb){try{var r=await sb.from('users').update(patch).eq('user_id',S.uid).select('username,email,first_name,last_name,phone_number,bio,notification_preference').single();if(r.error)throw r.error;S.profile=r.data;S.user=r.data.username;try{localStorage.setItem('pantry_user',JSON.stringify({id:S.uid,u:S.user}))}catch(e){}}catch(e){return profileErr('Could not save profile: '+e.message)}}else{S.profile=patch;S.user=un;S.email=em;try{localStorage.setItem('pantry_profile_'+(S.uid||'offline'),JSON.stringify(patch))}catch(e){}}
  toast('Profile saved.',1);render()}
 function profileErr(m){var e=document.getElementById('profileErr');if(e)e.textContent=m;else toast(m)}
-
+ 
 function tabsH(){var t=S.tab;
  return '<nav class="tabs"><button class="tab logout-tab" type="button" onclick="logout()">Log out</button><button class="tab '+(t=='profile'?'on':'')+'" onclick="go(\'app\',\'profile\')"><b>👤</b>Profile</button><span class="tab-spacer" aria-hidden="true"></span><button class="tab '+(t=='saved'||t=='sug'?'on':'')+'" onclick="go(\'app\',\'saved\')"><b>📖</b>Recipes</button><button class="tab mid '+(t=='inv'?'on':'')+'" onclick="go(\'app\',\'inv\')"><b>🧊</b>Food Inventory</button><button class="tab '+(t=='groc'?'on':'')+'" onclick="go(\'app\',\'groc\')"><b>🛒</b>Grocery List</button></nav>'}
-
+ 
 // Restore the signed-in account and load its profile from Supabase.
 (async function start(){
  if(sb){var s=null;try{s=JSON.parse(localStorage.getItem('pantry_user'))}catch(e){}
