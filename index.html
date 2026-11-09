@@ -50,6 +50,9 @@ input:disabled{opacity:.5}
 .tab.mid{flex:1.5;background:var(--ink);color:var(--bg);padding:14px 4px;margin-top:-18px;font-weight:800}
 .tab.on{color:var(--ink);font-weight:800;background:var(--acc)}
 .tab.mid.on{background:var(--ink);color:var(--acc)}
+.tab.on,.tab.mid.on{background:#fff!important;color:#000!important}
+.app-logout{display:flex;justify-content:flex-start;margin:0 0 8px}
+.app-logout .mini{color:var(--mute);font-size:.92rem;padding:6px 0}
 .actionbar{position:fixed;left:0;right:0;bottom:calc(118px + env(safe-area-inset-bottom,0px));max-width:480px;margin:0 auto;display:flex;gap:10px;padding:0 96px 0 18px}
 .actionbar .btn{margin:0}
 .fab{position:fixed;right:max(18px,calc(50% - 222px));bottom:calc(118px + env(safe-area-inset-bottom,0px));width:68px;height:68px;border-radius:50%;border:0;background:var(--acc);color:#14302b;font-size:2.6rem;line-height:1;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25)}
@@ -323,7 +326,7 @@ function render(){
  if(S.screen=='create')h=createH();
  else if(S.screen=='login')h=loginH();
  else if(S.screen=='forgot')h=forgotH();
- else{h=S.tab=='inv'?invH():S.tab=='saved'?savedH():S.tab=='sug'?sugH():S.tab=='profile'?profileH():grocH();h+=tabsH()}
+ else{h=S.tab=='inv'?invH():S.tab=='saved'?savedH():S.tab=='sug'?sugH():S.tab=='profile'?profileH():grocH();h='<div class="app-logout"><button class="mini" type="button" onclick="logout()">Log out</button></div>'+h+tabsH()}
  a.innerHTML=h;
 }
 function createH(){return '<h1>Create Your Account</h1><p class="sub">Set up Pantry so nothing in your fridge goes to waste.</p>'+
@@ -360,7 +363,7 @@ function doForgot(){if(!/^\S+@\S+\.\S+$/.test(v('fe')))return err('Please enter 
 
 function invH(){
  var soon=S.inv.filter(function(x){if(!x.e)return false;var d=days(x.e);return d==7||d==3||d==1}); // CHANGED: skip items with no expiration
- var h='<div class="between"><h1>Food Inventory</h1><button class="mini" onclick="logout()">Log out</button></div><p class="sub">Soonest to expire first.</p>';
+ var h='<h1>Food Inventory</h1><p class="sub">Soonest to expire first.</p>';
  soon.forEach(function(x){h+='<div class="banner" role="status">🔔 '+esc(x.n)+' expires in '+days(x.e)+' day'+(days(x.e)>1?'s':'')+'.</div>'});
  var l=S.inv.slice().sort(function(a,b){if(!a.e)return 1;if(!b.e)return -1;return a.e<b.e?-1:1}); // CHANGED: no-expiration items go last
  if(!l.length)h+='<div class="note">Your inventory is empty. Tap + to add your first item.</div>';
