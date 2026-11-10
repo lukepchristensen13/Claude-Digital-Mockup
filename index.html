@@ -80,6 +80,9 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
 .mini{border:0;background:none;color:var(--mute);font:inherit;text-decoration:underline;cursor:pointer}
 .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--bad);color:#fff;padding:10px 16px;border-radius:10px;z-index:20;max-width:90%}
 .toast.ok{background:var(--ok)}
+/* NEW: Recipes pages are read-only, so no text-editing cursor (form inputs in pop-ups are unaffected) */
+.recipes *{cursor:default;caret-color:transparent}
+.recipes summary,.recipes summary *,.recipes button,.recipes button *{cursor:pointer}
  
 /* ==========================================
    DESKTOP RESPONSIVE DESIGN
@@ -382,6 +385,7 @@ function render(){
  else if(S.screen=='forgot')h=forgotH();
  else{h=S.tab=='inv'?invH():S.tab=='saved'?savedH():S.tab=='sug'?sugH():S.tab=='profile'?profileH():grocH();h+=tabsH()}
  a.innerHTML=h;
+ a.classList.toggle('recipes',S.screen=='app'&&(S.tab=='saved'||S.tab=='sug')); // NEW: read-only cursor on Recipes pages
 }
 function createH(){return '<h1>Create Your Account</h1><p class="sub">Set up Pantry so nothing in your fridge goes to waste.</p>'+
 [['First name','fn'],['Last name','ln'],['Email address','em','email'],['Phone number','ph','tel'],['Username','us'],['Password','pw','password']].map(function(f){return '<label for="'+f[1]+'">'+f[0]+'</label><input id="'+f[1]+'" type="'+(f[2]||'text')+'">'}).join('')+
