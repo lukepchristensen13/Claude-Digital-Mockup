@@ -248,6 +248,42 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
 .profile-radio input{width:auto;accent-color:var(--ok)}
 .profile-radio label:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 @media(max-width:700px){.profile-grid{grid-template-columns:1fr}.profile-fields{grid-template-columns:1fr}.profile-fields .wide{grid-column:auto}}
+
+/* NEW: sign-up onboarding steps */
+.steps{display:flex;gap:6px;margin:6px 0 4px;max-width:850px}
+.steps span{flex:1;height:6px;border-radius:99px;background:var(--line)}
+.steps span.on{background:var(--ok)}
+.steplabel{font-size:.85rem;font-weight:700;color:var(--ok);margin:0 0 4px}
+.navrow{display:flex;gap:10px;max-width:850px;margin-top:18px}
+.navrow .btn{margin:0;flex:1}
+.daychk{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.daychk label{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:11px;padding:10px 13px;margin:0;cursor:pointer;background:var(--card);font-weight:600}
+.daychk input{width:auto;accent-color:var(--ok)}
+.daychk label:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+
+/* NEW: alerts */
+.tab{position:relative}
+@media (max-width:767px){.tabs{gap:2px;padding-left:4px;padding-right:4px}.tab{font-size:.78rem;padding:8px 2px;min-width:0}.tab.mid{flex:1.3}}
+.badge{position:absolute;top:0;right:4px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--bad);color:#fff;font-size:.7rem;font-weight:800;line-height:18px;text-align:center}
+.alert{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;max-width:850px}
+.alert.unread{border-color:var(--warn);border-left-width:5px}
+.alert .pic{width:42px;height:42px;font-size:1.5rem}
+.alert .msg{margin:0 0 4px}
+.pill.ai{background:var(--ink);color:var(--bg);font-size:.7rem;padding:2px 8px;margin-left:6px;vertical-align:1px}
+
+/* NEW: admin portal */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:14px}
+.stat b{display:block;font-size:1.8rem;line-height:1.1}
+.stat span{color:var(--mute);font-size:.85rem}
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px}
+.barrow{display:grid;grid-template-columns:70px 1fr 64px;gap:10px;align-items:center;margin:8px 0;font-size:.9rem}
+.bar{height:12px;border-radius:99px;background:var(--bg);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:99px}
+.tablewrap{overflow-x:auto;background:var(--card);border:1.5px solid var(--line);border-radius:14px}
+.tablewrap table{width:100%;border-collapse:collapse;font-size:.9rem;min-width:620px}
+.tablewrap th,.tablewrap td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+.tablewrap th{color:var(--mute);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.03em}
  
 </style>
 </head>
@@ -274,7 +310,8 @@ if(USE_SUPABASE){
 var S={screen:'create',tab:'inv',sel:null,user:null,uid:null,
 inv:[{id:1,n:'Spinach',q:1,u:'oz',a:5,d:'Bagged',e:off(1),i:'🥬'},{id:2,n:'Eggs',q:6,u:'individual',d:'',e:off(6),i:'🥚'},{id:3,n:'Milk',q:1,u:'gallon',a:0.5,d:'',e:off(3),i:'🥛'},{id:4,n:'Rice',q:2,u:'lb',a:2,d:'',e:off(200),i:'🍚'},{id:5,n:'Tomatoes',q:4,u:'individual',d:'',e:off(9),i:'🍅'}],
 groc:[{id:1,n:'Bread',done:false},{id:2,n:'Butter',done:true}],
-saved:[0],mine:[],used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none'},nid:10,gopen:false}; // CHANGED: added used:[] (items marked as used)
+saved:[0],mine:[],used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none',notify_days:[7,3,1],in_app_alerts:true,is_admin:false},nid:10,gopen:false,
+notes:[],su:{step:1,notification_preference:'email',notify_days:[7,3,1]},admin:null}; // NEW: notes = alerts, su = sign-up steps, admin = admin stats
 var MAXQ=99; // NEW: max quantity for an item
 // NEW: unit types. [singular, plural]
 var UNITS={individual:['individual','individual'],oz:['oz','oz'],lb:['lb','lbs'],g:['g','g'],kg:['kg','kg'],'fl oz':['fl oz','fl oz'],ml:['ml','ml'],liter:['liter','liters'],cup:['cup','cups'],tbsp:['tbsp','tbsp'],tsp:['tsp','tsp'],pint:['pint','pints'],quart:['quart','quarts'],gallon:['gallon','gallons']};
@@ -316,6 +353,8 @@ function routeForState(){
  if(S.screen=='forgot')return '#/forgot-password';
  if(S.screen=='create')return '#/create-account';
  if(S.tab=='profile')return '#/profile';
+ if(S.tab=='alerts')return '#/alerts'; // NEW
+ if(S.tab=='admin')return '#/admin'; // NEW
  if(S.tab=='saved')return '#/recipes/saved';
  if(S.tab=='sug')return '#/recipes/suggested';
  if(S.tab=='groc')return '#/grocery-list';
@@ -324,6 +363,8 @@ function routeForState(){
 function readHashRoute(){
  var path=(location.hash||'').replace(/^#\/?/,'').split('?')[0];
  if(path=='profile'){S.screen='app';S.tab='profile'}
+ else if(path=='alerts'){S.screen='app';S.tab='alerts'} // NEW
+ else if(path=='admin'){S.screen='app';S.tab='admin'} // NEW
  else if(path=='food-inventory'||path=='inventory'){S.screen='app';S.tab='inv'}
  else if(path=='grocery-list'){S.screen='app';S.tab='groc'}
  else if(path=='recipes'||path=='recipes/saved'){S.screen='app';S.tab='saved'}
@@ -334,8 +375,8 @@ function readHashRoute(){
  else return false;
  return true;
 }
-function go(s,t){S.screen=s;if(t)S.tab=t;S.sel=null;var route=routeForState();if(location.hash!==route)location.hash=route;render()}
-window.addEventListener('hashchange',function(){if(readHashRoute())render()});
+function go(s,t){S.screen=s;if(t)S.tab=t;S.sel=null;if(t=='admin')S.admin=null;/* NEW: fresh admin stats each visit */var route=routeForState();if(location.hash!==route)location.hash=route;render()}
+window.addEventListener('hashchange',function(){if(location.hash===routeForState())return;/* CHANGED: skip a second redraw that could clear typed text */if(readHashRoute())render()});
 function icon(n){var m={spinach:'🥬',egg:'🥚',milk:'🥛',rice:'🍚',tomato:'🍅',bread:'🍞',butter:'🧈',apple:'🍎'};n=n.toLowerCase();for(var k in m)if(n.indexOf(k)>-1)return m[k];return'🍽️'}
  
 // ---------- Database helpers (only used when USE_SUPABASE is true) ----------
@@ -369,35 +410,66 @@ async function loadAll(){
  var sr=chk(res[2]);
  S.mine=sr.filter(function(r){return r.ingredients}).map(rowMine); // NEW: the user's own recipes
  S.saved=sr.filter(function(r){return !r.ingredients}).map(function(r){return R.findIndex(function(x){return x.n==r.recipe_name})}).filter(function(i){return i>-1});
- var pr=await sb.from('users').select('username,email,first_name,last_name,phone_number,bio,notification_preference').eq('user_id',S.uid).single();
- if(!pr.error&&pr.data)S.profile=Object.assign({},S.profile,pr.data);
+ // CHANGED: select('*') so new columns (notify_days, in_app_alerts, is_admin) load if they exist
+ var pr=await sb.from('users').select('*').eq('user_id',S.uid).single();
+ if(!pr.error&&pr.data){delete pr.data.password_hash;S.profile=Object.assign({},S.profile,pr.data)}
+ await loadNotes(); // NEW
 }
+// NEW: load AI alerts written by the automation (skips quietly if the table isn't set up yet)
+async function loadNotes(){if(!sb||!S.uid)return;
+ var r=await sb.from('notifications').select('*').eq('user_id',S.uid).order('created_at',{ascending:false}).limit(50);
+ S.notes=r.error?[]:r.data}
  
-function logout(){try{localStorage.removeItem('pantry_user')}catch(e){}S.uid=null;S.user=null;if(sb){S.inv=[];S.groc=[];S.saved=[];S.mine=[];S.used=[]}go('login')}
+function logout(){try{localStorage.removeItem('pantry_user')}catch(e){}S.uid=null;S.user=null;if(sb){S.inv=[];S.groc=[];S.saved=[];S.mine=[];S.used=[];S.notes=[]}S.admin=null;S.profile=Object.assign({},S.profile,{is_admin:false});go('login')}
  
 function render(){
  var a=document.getElementById('app'),h='';
  if(S.screen=='create')h=createH();
  else if(S.screen=='login')h=loginH();
  else if(S.screen=='forgot')h=forgotH();
- else{h=S.tab=='inv'?invH():S.tab=='saved'?savedH():S.tab=='sug'?sugH():S.tab=='profile'?profileH():grocH();h+=tabsH()}
+ else{h=S.tab=='inv'?invH():S.tab=='saved'?savedH():S.tab=='sug'?sugH():S.tab=='profile'?profileH():S.tab=='alerts'?alertsH():S.tab=='admin'?adminH():grocH();h+=tabsH()} // CHANGED: alerts + admin pages
  a.innerHTML=h;
 }
-function createH(){return '<h1>Create Your Account</h1><p class="sub">Set up Pantry so nothing in your fridge goes to waste.</p>'+
-[['First name','fn'],['Last name','ln'],['Email address','em','email'],['Phone number','ph','tel'],['Username','us'],['Password','pw','password']].map(function(f){return '<label for="'+f[1]+'">'+f[0]+'</label><input id="'+f[1]+'" type="'+(f[2]||'text')+'">'}).join('')+
-'<p class="meta">Password: 12+ characters, one capital letter, one special character.</p><div class="err" id="e" role="alert"></div>'+
-'<button class="btn acc" onclick="doCreate()">Create account</button><div style="text-align:right;margin-top:14px"><button class="link" onclick="go(\'login\')">Log in</button></div>'}
-async function doCreate(){
- var f=[['fn','first name'],['ln','last name'],['em','email address'],['ph','phone number'],['us','username'],['pw','password']];
- for(var i=0;i<f.length;i++)if(!v(f[i][0]))return err('Please enter your '+f[i][1]+'.');
- if(!/^\S+@\S+\.\S+$/.test(v('em')))return err('Please enter a valid email address.');
- var p=v('pw');if(p.length<12||!/[A-Z]/.test(p)||!/[^A-Za-z0-9]/.test(p))return err('Password needs 12+ characters, a capital letter and a special character.');
- if(!sb){S.user=v('us');S.email=v('em');S.pass=p;S.profile={first_name:v('fn'),last_name:v('ln'),email:v('em'),phone_number:v('ph'),bio:'',notification_preference:'none'};return go('app','inv')}
+// ---------- NEW: sign-up split into 4 steps (onboarding flow) ----------
+var SU_STEPS=[
+ {t:'About You',s:'Let\'s start with your name.',f:[['First name','fn','text','given-name'],['Last name','ln','text','family-name']]},
+ {t:'Contact Info',s:'We use this for your account and expiration alerts.',f:[['Email address','em','email','email'],['Phone number','ph','tel','tel']]},
+ {t:'Create Your Login',s:'Pick a username and a strong password.',f:[['Username','us','text','username'],['Password','pw','password','new-password'],['Confirm password','pw2','password','new-password']]},
+ {t:'Expiration Alerts',s:'Choose how Pantry reminds you before food goes bad. You can change this later.',f:[]}];
+function createH(){var su=S.su,st=SU_STEPS[su.step-1],h='';
+ h+='<h1>Create Your Account</h1><p class="steplabel">Step '+su.step+' of '+SU_STEPS.length+': '+st.t+'</p>';
+ h+='<div class="steps" aria-hidden="true">'+SU_STEPS.map(function(x,i){return '<span class="'+(i<su.step?'on':'')+'"></span>'}).join('')+'</div>';
+ h+='<p class="sub">'+st.s+'</p>';
+ h+=st.f.map(function(f){return '<label for="'+f[1]+'">'+f[0]+'</label><input id="'+f[1]+'" type="'+f[2]+'" autocomplete="'+f[3]+'" value="'+(f[2]=='password'?'':esc(su[f[1]]||''))+'" onkeydown="if(event.key==\'Enter\')suNext()">'}).join('');
+ if(su.step==3)h+='<p class="meta">Password: 12+ characters, one capital letter, one special character.</p>';
+ if(su.step==4)h+=notifFields(su.notification_preference,su.notify_days,null);
+ h+='<div class="err" id="e" role="alert"></div><div class="navrow">'+(su.step>1?'<button class="btn ghost" onclick="suBack()">Back</button>':'')+
+  '<button class="btn acc" onclick="suNext()">'+(su.step<SU_STEPS.length?'Next':'Create account')+'</button></div>';
+ return h+'<div style="text-align:right;margin-top:14px;max-width:850px"><button class="link" onclick="go(\'login\')">Already have an account? Log in</button></div>'}
+// keep what was typed when moving between steps
+function suKeep(){SU_STEPS[S.su.step-1].f.forEach(function(f){var el=document.getElementById(f[1]);if(el)S.su[f[1]]=el.value.trim()});
+ if(S.su.step==4){var n=readNotif();S.su.notification_preference=n.pref;S.su.notify_days=n.days}}
+function suBack(){suKeep();S.su.step--;render()}
+async function suNext(){suKeep();var su=S.su;
+ if(su.step==1){if(!su.fn)return err('Please enter your first name.');if(!su.ln)return err('Please enter your last name.')}
+ if(su.step==2){if(!su.em)return err('Please enter your email address.');if(!/^\S+@\S+\.\S+$/.test(su.em))return err('Please enter a valid email address.');if(!su.ph)return err('Please enter your phone number.');
+  if(sb){var r=await sb.from('users').select('user_id').eq('email',su.em).maybeSingle();if(r.data)return err('An account with that email already exists. Try logging in.')}}
+ if(su.step==3){if(!su.us)return err('Please choose a username.');var p=su.pw||'';
+  if(p.length<12||!/[A-Z]/.test(p)||!/[^A-Za-z0-9]/.test(p))return err('Password needs 12+ characters, a capital letter and a special character.');
+  if(p!==su.pw2)return err('Passwords do not match.');
+  if(sb){var r2=await sb.from('users').select('user_id').eq('username',su.us).maybeSingle();if(r2.data)return err('That username is already taken.')}}
+ if(su.step<SU_STEPS.length){su.step++;render();var first=document.querySelector('#app input');if(first)first.focus();return}
+ return doCreate()}
+async function doCreate(){var su=S.su;
+ var prof={first_name:su.fn,last_name:su.ln,email:su.em,phone_number:su.ph,bio:'',notification_preference:su.notification_preference,notify_days:su.notify_days,in_app_alerts:true,is_admin:false};
+ if(!sb){S.user=su.us;S.email=su.em;S.pass=su.pw;S.profile=prof;S.su={step:1,notification_preference:'email',notify_days:[7,3,1]};return go('app','inv')}
  try{
-  var r=await sb.from('users').insert({username:v('us'),email:v('em'),password_hash:await sha(p),first_name:v('fn'),last_name:v('ln'),
-   phone_number:v('ph')}).select('user_id,username').single();
+  var row={username:su.us,email:su.em,password_hash:await sha(su.pw),first_name:su.fn,last_name:su.ln,phone_number:su.ph,notification_preference:su.notification_preference,notify_days:su.notify_days,in_app_alerts:true};
+  var r=await sb.from('users').insert(row).select('user_id,username').single();
+  // if the setup SQL hasn't been run yet, create the account without the new alert columns
+  if(r.error&&/notify_days|in_app_alerts|notification_preference/.test(r.error.message||'')){delete row.notify_days;delete row.in_app_alerts;delete row.notification_preference;r=await sb.from('users').insert(row).select('user_id,username').single()}
   if(r.error)return err(r.error.code=='23505'?'That username or email is already taken.':'Could not create account: '+r.error.message);
-  S.profile={first_name:v('fn'),last_name:v('ln'),email:v('em'),phone_number:v('ph'),bio:'',notification_preference:'none'};setUser(r.data);await loadAll();go('app','inv');toast('Account created.',1)
+  S.profile=prof;S.su={step:1,notification_preference:'email',notify_days:[7,3,1]};setUser(r.data);await loadAll();go('app','inv');toast('Account created. Welcome to Pantry!',1)
  }catch(e){fail(e)}}
 function err(m){var e=document.getElementById('e');if(e)e.textContent=m;else toast(m)}
 function loginH(){return '<h1>Welcome Back</h1><p class="sub">Log in to see what is in your kitchen.</p><label for="lu">Username or email</label><input id="lu"><label for="lp">Password</label><input id="lp" type="password"><div class="err" id="e" role="alert"></div><button class="btn acc" onclick="doLogin()">Log in</button>'+
@@ -405,20 +477,22 @@ function loginH(){return '<h1>Welcome Back</h1><p class="sub">Log in to see what
 async function doLogin(){var u=v('lu'),p=v('lp');
  if(!u||!p)return err('Please enter your username and password.');
  if(!sb){var ok=(u=='demo'&&p=='Demo-Pass-1234!')||(S.user&&(u==S.user||u==S.email)&&p==S.pass);
-  if(!ok)return err('Username or password is incorrect. Try again.');S.user=S.user||'demo';return go('app','inv')}
+  if(!ok)return err('Username or password is incorrect. Try again.');
+  if(u=='demo'){S.user='demo';S.profile.is_admin=true} // NEW: offline demo account can see the admin portal
+  go('app','inv');return alertPopup()}
  try{
   var r=await sb.from('users').select('user_id,username,password_hash').eq(u.indexOf('@')>-1?'email':'username',u).maybeSingle();
   if(r.error)throw r.error;
   if(!r.data||r.data.password_hash!==await sha(p))return err('Username or password is incorrect. Try again.');
-  setUser(r.data);await loadAll();go('app','inv')
+  setUser(r.data);await loadAll();go('app','inv');alertPopup() // NEW: popup if food is expiring
  }catch(e){fail(e)}}
 function forgotH(){return '<h1>Reset Password</h1><p class="sub">Enter the email linked to your account.</p><label for="fe">Email address</label><input id="fe" type="email"><div class="err" id="e" role="alert"></div><div id="ok"></div><button class="btn acc" onclick="doForgot()">Send recovery link</button><button class="link" style="margin-top:14px" onclick="go(\'login\')">Back to log in</button>'}
 function doForgot(){if(!/^\S+@\S+\.\S+$/.test(v('fe')))return err('Please enter a valid email address.');err('');document.getElementById('ok').innerHTML='<div class="note">Check your email for a password recovery link.</div>'}
  
 function invH(){
- var soon=S.inv.filter(function(x){if(!x.e)return false;var d=days(x.e);return d==7||d==3||d==1}); // CHANGED: skip items with no expiration
+ var soon=inApp()?dueAlerts():[]; // CHANGED: uses the user's alert days + in-app setting
  var h='<h1>Food Inventory</h1><p class="sub">Soonest to expire first.</p>';
- soon.forEach(function(x){h+='<div class="banner" role="status">🔔 '+esc(x.n)+' expires in '+days(x.e)+' day'+(days(x.e)>1?'s':'')+'.</div>'});
+ soon.forEach(function(a){h+='<div class="banner" role="status">🔔 '+esc(a.msg)+' <button class="mini" style="color:#14302b" onclick="go(\'app\',\'alerts\')">See alerts</button></div>'});
  var l=S.inv.slice().sort(function(a,b){if(!a.e)return 1;if(!b.e)return -1;return a.e<b.e?-1:1}); // CHANGED: no-expiration items go last
  if(!l.length)h+='<div class="note">Your inventory is empty. Tap + to add your first item.</div>';
  l.forEach(function(x){var d=x.e?days(x.e):999,c=d<0?'gone':d<=3?'soon':'fine';
@@ -558,29 +632,143 @@ async function gEdit(id){var g=S.groc.filter(function(x){return x.id==id})[0];if
  render()}
  
  
+// =====================================================================
+// NEW: EXPIRATION ALERTS (in-app). AI messages come from the "notifications"
+// table, written by the daily automation. If the automation hasn't run yet,
+// the site still makes its own reminder for items that hit an alert day.
+// =====================================================================
+function alertDays(p){p=p||S.profile||{};var d=p.notify_days;if(d==null)return [7,3,1];
+ if(typeof d=='string')d=d.replace(/[{}]/g,'').split(',').filter(Boolean);return d.map(Number)}
+function inApp(){return (S.profile||{}).in_app_alerts!==false}
+function plural(n){return n+' day'+(n==1?'':'s')}
+function daysText(ds){ds=ds.slice().sort(function(a,b){return b-a}).map(plural);if(!ds.length)return 'never';if(ds.length==1)return ds[0];return ds.slice(0,-1).join(', ')+(ds.length>2?',':'')+' and '+ds[ds.length-1]}
+function defMsg(x,d){return x.n+(d<=0?' expires today':' expires in '+plural(d))+'. Use it soon or find a recipe for it!'}
+function noteFor(id,d){return S.notes.filter(function(n){return n.item_id==id&&n.days_left==d})[0]}
+function findItem(id){return S.inv.concat(S.used).filter(function(x){return x.id==id})[0]}
+// items that hit one of the user's alert days today
+function dueAlerts(){var ds=alertDays();
+ return S.inv.filter(function(x){return x.e&&ds.indexOf(days(x.e))>-1}).map(function(x){var d=days(x.e),n=noteFor(x.id,d);return {item:x,d:d,msg:n?n.message:defMsg(x,d)}})}
+function readSet(){try{return JSON.parse(localStorage.getItem('pantry_read_'+(S.uid||'offline'))||'[]')}catch(e){return []}}
+function saveReadSet(a){try{localStorage.setItem('pantry_read_'+(S.uid||'offline'),JSON.stringify(a.slice(-200)))}catch(e){}}
+// every alert to show: AI ones from the database + the site's own for anything not covered yet
+function allAlerts(){var rs=readSet(),out=[];
+ S.notes.forEach(function(n){var it=findItem(n.item_id);
+  out.push({key:'n-'+n.notification_id,msg:n.message,icon:it?it.i:'🔔',ai:true,ch:n.channel,when:(n.created_at||'').slice(0,10),read:!!n.is_read})});
+ dueAlerts().forEach(function(a){if(noteFor(a.item.id,a.d))return;var k='loc-'+a.item.id+'-'+a.d+'-'+today();
+  out.push({key:k,msg:a.msg,icon:a.item.i,ai:false,ch:'in_app',when:today(),read:rs.indexOf(k)>-1})});
+ return out.sort(function(a,b){return (a.read-b.read)||(a.when<b.when?1:-1)})}
+function unreadCount(){return inApp()?allAlerts().filter(function(a){return !a.read}).length:0}
+function alertPopup(){var n=unreadCount();if(n)setTimeout(function(){toast('🔔 You have '+n+' new expiration alert'+(n>1?'s':'')+'. Check the Alerts tab.',1)},300)}
+async function markRead(key){
+ if(key.indexOf('n-')==0){var id=key.slice(2),n=S.notes.filter(function(x){return String(x.notification_id)==id})[0];if(!n)return;
+  if(sb){var r=await sb.from('notifications').update({is_read:true}).eq('notification_id',id);if(r.error)return fail(r.error)}
+  n.is_read=true}
+ else{var rs=readSet();if(rs.indexOf(key)<0){rs.push(key);saveReadSet(rs)}}
+ render()}
+async function markAllRead(){var l=allAlerts().filter(function(a){return !a.read});for(var i=0;i<l.length;i++)await markRead(l[i].key);toast('All alerts marked as read.',1)}
+function alertsH(){var l=allAlerts(),ds=alertDays();
+ var h='<h1>Alerts</h1><p class="sub">Reminders before your food expires.</p>';
+ h+='<div class="row" style="flex-wrap:wrap;gap:6px 18px;margin-bottom:14px">'+(l.some(function(a){return !a.read})?'<button class="mini" onclick="markAllRead()">Mark all as read</button>':'')+'<button class="mini" onclick="go(\'app\',\'profile\')">Notification settings</button></div>';
+ if(!inApp())h+='<div class="note" style="border-color:var(--warn);max-width:850px;margin-bottom:14px">In-app alerts are turned off, so you won\'t see banners or a badge. Turn them back on in Notification Settings.</div>';
+ if(!l.length)h+='<div class="note" style="max-width:850px">No alerts right now. Pantry will remind you '+daysText(ds)+' before food expires.</div>';
+ l.forEach(function(a){var how=a.ch=='email'?'Sent by email':a.ch=='text'?'Sent by text':'In-app';
+  h+='<div class="alert'+(a.read?'':' unread')+'"><div class="pic">'+a.icon+'</div><div class="grow"><p class="msg">'+esc(a.msg)+(a.ai?'<span class="pill ai" title="Written by AI">AI</span>':'')+'</p><div class="meta">'+(a.read?'':'<b>New</b> &middot; ')+how+' &middot; '+esc(a.when)+'</div></div>'+(a.read?'':'<button class="mini" onclick="markRead(\''+a.key+'\')">Mark read</button>')+'</div>'});
+ return h}
+
+// =====================================================================
+// NEW: NOTIFICATION SETTINGS (used on the Profile page and in sign-up step 4)
+// =====================================================================
+function notifFields(pref,ds,ia){ds=(ds||[]).map(Number);
+ var h='<label>How should we notify you?</label><div class="profile-radio">'+[['email','✉️ Email'],['text','💬 Text message'],['none','🔕 Website only']].map(function(o){return '<label><input type="radio" name="nf_pref" value="'+o[0]+'"'+((pref||'none')==o[0]?' checked':'')+'> '+o[1]+'</label>'}).join('')+'</div>';
+ h+='<label>When should we remind you?</label><div class="daychk">'+[7,3,1].map(function(d){return '<label><input type="checkbox" class="nf_day" value="'+d+'"'+(ds.indexOf(d)>-1?' checked':'')+'> '+plural(d)+' before</label>'}).join('')+'</div>';
+ if(ia!=null)h+='<label class="chk"><input type="checkbox" id="nf_inapp"'+(ia?' checked':'')+'>Show alerts inside the website (Alerts tab and banners)</label>';
+ return h}
+function readNotif(){var p=document.querySelector('input[name="nf_pref"]:checked'),ia=document.getElementById('nf_inapp');
+ return {pref:p?p.value:'none',days:[].map.call(document.querySelectorAll('.nf_day:checked'),function(x){return +x.value}),inapp:ia?ia.checked:true}}
+function nfErr(m){var e=document.getElementById('nfErr');if(e)e.textContent=m;else toast(m)}
+async function saveNotif(){var n=readNotif(),p=S.profile||{},msg='Notification settings saved.';
+ if(n.pref=='email'&&!(p.email||S.email))return nfErr('Add an email address to your profile first.');
+ if(n.pref=='text'&&!p.phone_number)return nfErr('Add a phone number to your profile first.');
+ var patch={notification_preference:n.pref,notify_days:n.days,in_app_alerts:n.inapp};
+ if(sb){var r=await sb.from('users').update(patch).eq('user_id',S.uid).select('*').single();
+  if(r.error&&/notify_days|in_app_alerts/.test(r.error.message||'')){r=await sb.from('users').update({notification_preference:n.pref}).eq('user_id',S.uid).select('*').single();msg='Saved how to notify you. Run the database setup SQL to also save alert days.'}
+  if(r.error)return nfErr('Could not save: '+r.error.message);
+  delete r.data.password_hash;S.profile=Object.assign({},S.profile,patch,r.data)}
+ else{S.profile=Object.assign({},S.profile,patch);try{localStorage.setItem('pantry_profile_offline',JSON.stringify(Object.assign({username:S.user},S.profile)))}catch(e){}}
+ toast(msg,1);render()}
+
+// =====================================================================
+// NEW: ADMIN PORTAL (only for users with is_admin = true)
+// =====================================================================
+function isAdmin(){return !!(S.profile||{}).is_admin}
+async function loadAdmin(){S.admin={loading:true};var d;
+ if(sb){var q=function(t,c){return sb.from(t).select(c).limit(5000).then(function(r){return r.error?null:r.data})};
+  var res=await Promise.all([q('users','*'),q('inventory_items','item_id,user_id,item_name,is_used_up,expiration_date'),q('grocery_list_items','grocery_item_id,user_id,is_checked'),q('saved_recipes','user_id,ingredients'),q('notifications','channel,created_at')]);
+  d={users:(res[0]||[]).map(function(u){delete u.password_hash;return u}),items:res[1]||[],groc:res[2]||[],recipes:res[3]||[],notes:res[4]};
+ }else{ // offline prototype: stats from this browser
+  d={users:[Object.assign({user_id:1,username:S.user||'demo',created_at:new Date().toISOString()},S.profile)],
+   items:S.inv.map(function(x){return {user_id:1,item_name:x.n,is_used_up:false,expiration_date:x.e}}).concat(S.used.map(function(x){return {user_id:1,item_name:x.n,is_used_up:true,expiration_date:x.e}})),
+   groc:S.groc.map(function(g){return {user_id:1,is_checked:g.done}}),recipes:S.saved.map(function(){return {user_id:1}}).concat(S.mine.map(function(){return {user_id:1,ingredients:[1]}})),notes:S.notes}}
+ S.admin=d;if(S.tab=='admin')render()}
+function adminH(){
+ if(!isAdmin())return '<h1>Admin Portal</h1><div class="note" style="border-color:var(--bad);max-width:850px">You don\'t have access to this page. Ask a Pantry admin to give your account admin access.</div>';
+ if(!S.admin){S.admin={loading:true};setTimeout(loadAdmin,0);return '<h1>Admin Portal</h1><p class="sub">Loading user statistics…</p>'}
+ if(S.admin.loading)return '<h1>Admin Portal</h1><p class="sub">Loading user statistics…</p>';
+ var d=S.admin,week=new Date(Date.now()-7*864e5).toISOString(),U=d.users.length;
+ var active=d.items.filter(function(i){return !i.is_used_up}),used=d.items.length-active.length;
+ var exp7=active.filter(function(i){if(!i.expiration_date)return false;var n=days(i.expiration_date);return n>=0&&n<=7}).length;
+ var expired=active.filter(function(i){return i.expiration_date&&days(i.expiration_date)<0}).length;
+ var newU=d.users.filter(function(u){return u.created_at&&u.created_at>=week}).length;
+ var custom=d.recipes.filter(function(r){return r.ingredients}).length;
+ var stat=function(n,l){return '<div class="stat"><b>'+n+'</b><span>'+l+'</span></div>'};
+ var h='<div class="between" style="flex-wrap:wrap;gap:8px"><h1>Admin Portal</h1><button class="mini" onclick="S.admin=null;render()">↻ Refresh</button></div><p class="sub">Pantry user statistics.</p>';
+ h+='<div class="stats">'+stat(U,'Total users')+stat(d.users.some(function(u){return u.created_at})?newU:'–','New users (last 7 days)')+stat(active.length,'Food items being tracked')+stat(used,'Items marked as used')+
+  stat(exp7,'Expiring in the next 7 days')+stat(expired,'Expired, not used')+stat(d.groc.length,'Grocery list items')+stat(d.recipes.length,'Saved recipes ('+custom+' custom)')+stat(d.notes?d.notes.length:'–','AI alerts sent')+'</div>';
+ // notification preference breakdown
+ var pc={email:0,text:0,none:0};d.users.forEach(function(u){var k=u.notification_preference||'none';pc[k]=(pc[k]||0)+1});
+ var bars=function(obj,labels){var tot=Object.keys(obj).reduce(function(s,k){return s+obj[k]},0)||1;return Object.keys(labels).map(function(k){var n=obj[k]||0,pct=Math.round(n*100/tot);return '<div class="barrow"><span>'+labels[k]+'</span><div class="bar" role="img" aria-label="'+labels[k]+' '+pct+' percent"><i style="width:'+pct+'%"></i></div><span>'+n+' ('+pct+'%)</span></div>'}).join('')};
+ h+='<div class="admin-grid"><div class="profile-card"><h2>Notification Preferences</h2>'+bars(pc,{email:'Email',text:'Text',none:'Website'})+'</div>';
+ // alerts by channel
+ var cc={email:0,text:0,in_app:0};(d.notes||[]).forEach(function(n){cc[n.channel]=(cc[n.channel]||0)+1});
+ h+='<div class="profile-card"><h2>AI Alerts Sent</h2>'+(d.notes?bars(cc,{email:'Email',text:'Text',in_app:'In-app'}):'<p class="meta">Run the database setup SQL to start tracking alerts.</p>')+'</div>';
+ // most tracked foods
+ var fc={};d.items.forEach(function(i){var k=(i.item_name||'').trim().toLowerCase();if(k)fc[k]=(fc[k]||0)+1});
+ var top=Object.keys(fc).sort(function(a,b){return fc[b]-fc[a]}).slice(0,5);
+ h+='<div class="profile-card"><h2>Most Tracked Foods</h2>'+(top.length?'<ol style="margin:8px 0 0;padding-left:20px">'+top.map(function(k){return '<li style="margin:4px 0">'+esc(k.charAt(0).toUpperCase()+k.slice(1))+' <span class="meta">('+fc[k]+')</span></li>'}).join('')+'</ol>':'<p class="meta">No food items yet.</p>')+'</div></div>';
+ // users table
+ var cnt=function(arr,id){return arr.filter(function(x){return x.user_id==id}).length};
+ h+='<h2 style="margin:6px 0 10px">Users</h2><div class="tablewrap"><table><thead><tr><th>Username</th><th>Name</th><th>Email</th><th>Alerts</th><th>Food items</th><th>Grocery items</th><th>Joined</th></tr></thead><tbody>'+
+  d.users.slice().sort(function(a,b){return (b.created_at||'')<(a.created_at||'')?-1:1}).map(function(u){return '<tr><td>'+esc(u.username||'')+(u.is_admin?' <span class="pill" style="font-size:.7rem">Admin</span>':'')+'</td><td>'+esc([u.first_name,u.last_name].filter(Boolean).join(' '))+'</td><td>'+esc(u.email||'')+'</td><td>'+esc(u.notification_preference||'none')+'</td><td>'+cnt(d.items.filter(function(i){return !i.is_used_up}),u.user_id)+'</td><td>'+cnt(d.groc,u.user_id)+'</td><td>'+esc((u.created_at||'').slice(0,10)||'–')+'</td></tr>'}).join('')+'</tbody></table></div>';
+ return h}
+
 function profileH(){var p=S.profile||{},full=[p.first_name,p.last_name].filter(Boolean).join(' ')||S.user||'Your profile',initial=(p.first_name||S.user||'U').charAt(0).toUpperCase();
- return '<div class="profile-grid"><section><div class="profile-card profile-identity"><div class="profile-avatar" aria-hidden="true">'+esc(initial)+'</div><h2>'+esc(full)+'</h2><div class="meta">@'+esc(S.user||'username')+'</div><p class="profile-bio">'+esc(p.bio||'Add a short bio to tell people a little about yourself.')+'</p></div><div class="note">🔒 Your password is private and is never displayed here.</div></section>'+ 
- '<section class="profile-card"><h1>My Profile</h1><p class="sub">Update your account details and notification preference.</p><div class="profile-fields">'+
+ return '<div class="profile-grid"><section><div class="profile-card profile-identity"><div class="profile-avatar" aria-hidden="true">'+esc(initial)+'</div><h2>'+esc(full)+'</h2><div class="meta">@'+esc(S.user||'username')+'</div><p class="profile-bio">'+esc(p.bio||'Add a short bio to tell people a little about yourself.')+'</p></div><div class="note">🔒 Your password is private and is never displayed here.</div>'+(isAdmin()?'<button class="btn" onclick="go(\'app\',\'admin\')">📊 Open Admin Portal</button>':'')+'</section>'+
+ '<div><section class="profile-card"><h1>My Profile</h1><p class="sub">Update your account details.</p><div class="profile-fields">'+
  '<div><label for="pf_fn">First name</label><input id="pf_fn" value="'+esc(p.first_name||'')+'" autocomplete="given-name"></div>'+ 
  '<div><label for="pf_ln">Last name</label><input id="pf_ln" value="'+esc(p.last_name||'')+'" autocomplete="family-name"></div>'+ 
  '<div><label for="pf_us">Username</label><input id="pf_us" value="'+esc(S.user||'')+'" autocomplete="username"></div>'+ 
  '<div><label for="pf_em">Email address</label><input id="pf_em" type="email" value="'+esc(p.email||S.email||'')+'" autocomplete="email"></div>'+ 
  '<div><label for="pf_ph">Phone number</label><input id="pf_ph" type="tel" value="'+esc(p.phone_number||'')+'" autocomplete="tel"></div>'+ 
  '<div class="wide"><label for="pf_bio">About me</label><textarea id="pf_bio" maxlength="280" placeholder="Share a little about yourself, your cooking style, or favorite foods…">'+esc(p.bio||'')+'</textarea><div class="meta">Up to 280 characters.</div></div></div>'+ 
- '<label>Notifications</label><div class="meta">Choose email, text message, or no notifications.</div><div class="profile-radio">'+
- ['email','text','none'].map(function(x){return '<label><input type="radio" name="pf_notice" value="'+x+'" '+((p.notification_preference||'none')==x?'checked':'')+'> '+(x=='email'?'✉️ Email':x=='text'?'💬 Text':'🔕 None')+'</label>'}).join('')+'</div>'+ 
- '<div class="err" id="profileErr" role="alert"></div><button class="btn acc" onclick="saveProfile()">Save profile</button></section></div>'}
-async function saveProfile(){var fn=v('pf_fn'),ln=v('pf_ln'),em=v('pf_em'),ph=v('pf_ph'),un=v('pf_us'),bio=v('pf_bio'),notice=document.querySelector('input[name="pf_notice"]:checked');
+ '<div class="err" id="profileErr" role="alert"></div><button class="btn acc" onclick="saveProfile()">Save profile</button></section>'+
+ // NEW: notification settings card
+ '<section class="profile-card" id="notif-settings"><h2>Notification Settings</h2><p class="sub">Choose how and when Pantry warns you before food expires.</p>'+
+ notifFields(p.notification_preference,alertDays(p),inApp())+
+ '<div class="err" id="nfErr" role="alert"></div><button class="btn acc" onclick="saveNotif()">Save notification settings</button></section></div></div>'}
+// CHANGED: notification preference moved to its own card (saveNotif); profile data is merged so admin/alert settings aren't lost
+async function saveProfile(){var fn=v('pf_fn'),ln=v('pf_ln'),em=v('pf_em'),ph=v('pf_ph'),un=v('pf_us'),bio=v('pf_bio');
  if(!fn||!ln||!em||!un)return profileErr('Please fill in your first name, last name, username, and email address.');
  if(!/^\S+@\S+\.\S+$/.test(em))return profileErr('Please enter a valid email address.');
- if(!notice)return profileErr('Choose a notification preference.');
- var patch={first_name:fn,last_name:ln,email:em,phone_number:ph,username:un,bio:bio,notification_preference:notice.value};
- if(sb){try{var r=await sb.from('users').update(patch).eq('user_id',S.uid).select('username,email,first_name,last_name,phone_number,bio,notification_preference').single();if(r.error)throw r.error;S.profile=r.data;S.user=r.data.username;try{localStorage.setItem('pantry_user',JSON.stringify({id:S.uid,u:S.user}))}catch(e){}}catch(e){return profileErr('Could not save profile: '+e.message)}}else{S.profile=patch;S.user=un;S.email=em;try{localStorage.setItem('pantry_profile_'+(S.uid||'offline'),JSON.stringify(patch))}catch(e){}}
+ var patch={first_name:fn,last_name:ln,email:em,phone_number:ph,username:un,bio:bio};
+ if(sb){try{var r=await sb.from('users').update(patch).eq('user_id',S.uid).select('*').single();if(r.error)throw r.error;delete r.data.password_hash;S.profile=Object.assign({},S.profile,r.data);S.user=r.data.username;try{localStorage.setItem('pantry_user',JSON.stringify({id:S.uid,u:S.user}))}catch(e){}}catch(e){return profileErr('Could not save profile: '+e.message)}}else{S.profile=Object.assign({},S.profile,patch);S.user=un;S.email=em;try{localStorage.setItem('pantry_profile_'+(S.uid||'offline'),JSON.stringify(S.profile))}catch(e){}}
  toast('Profile saved.',1);render()}
 function profileErr(m){var e=document.getElementById('profileErr');if(e)e.textContent=m;else toast(m)}
  
 function tabsH(){var t=S.tab;
- return '<nav class="tabs"><button class="tab logout-tab" type="button" onclick="logout()">Log out</button><button class="tab '+(t=='profile'?'on':'')+'" onclick="go(\'app\',\'profile\')"><b>👤</b>Profile</button><span class="tab-spacer" aria-hidden="true"></span><button class="tab '+(t=='saved'||t=='sug'?'on':'')+'" onclick="go(\'app\',\'saved\')"><b>📖</b>Recipes</button><button class="tab mid '+(t=='inv'?'on':'')+'" onclick="go(\'app\',\'inv\')"><b>🧊</b>Food Inventory</button><button class="tab '+(t=='groc'?'on':'')+'" onclick="go(\'app\',\'groc\')"><b>🛒</b>Grocery List</button></nav>'}
+ return '<nav class="tabs"><button class="tab logout-tab" type="button" onclick="logout()">Log out</button><button class="tab '+(t=='profile'?'on':'')+'" onclick="go(\'app\',\'profile\')"><b>👤</b>Profile</button><span class="tab-spacer" aria-hidden="true"></span><button class="tab '+(t=='saved'||t=='sug'?'on':'')+'" onclick="go(\'app\',\'saved\')"><b>📖</b>Recipes</button><button class="tab mid '+(t=='inv'?'on':'')+'" onclick="go(\'app\',\'inv\')"><b>🧊</b>Food Inventory</button><button class="tab '+(t=='groc'?'on':'')+'" onclick="go(\'app\',\'groc\')"><b>🛒</b>Grocery List</button>'+
+ // NEW: Alerts tab with unread count, Admin tab for admins only
+ (function(){var n=unreadCount();return '<button class="tab '+(t=='alerts'?'on':'')+'" onclick="go(\'app\',\'alerts\')" aria-label="Alerts'+(n?', '+n+' unread':'')+'"><b>🔔</b>Alerts'+(n?'<span class="badge" aria-hidden="true">'+n+'</span>':'')+'</button>'})()+
+ (isAdmin()?'<button class="tab '+(t=='admin'?'on':'')+'" onclick="go(\'app\',\'admin\')"><b>📊</b>Admin</button>':'')+'</nav>'}
  
 // Restore the signed-in account and load its profile from Supabase.
 (async function start(){
