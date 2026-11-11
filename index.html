@@ -80,6 +80,13 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
 .mini{border:0;background:none;color:var(--mute);font:inherit;text-decoration:underline;cursor:pointer}
 .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--bad);color:#fff;padding:10px 16px;border-radius:10px;z-index:20;max-width:90%}
 .toast.ok{background:var(--ok)}
+/* NEW: Recipes pages are read-only, so no text-editing cursor (form inputs in pop-ups are unaffected) */
+.recipes *{cursor:default;caret-color:transparent}
+.recipes summary,.recipes summary *,.recipes button,.recipes button *{cursor:pointer}
+.recipes textarea{cursor:text;caret-color:auto} /* NEW: notes box can still be typed in */
+.notes{background:var(--bg);border-radius:10px;padding:10px 12px;margin:6px 0 12px} /* NEW: recipe notes */
+.notetext{white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0 6px}
+.notearea{width:100%;min-height:90px;padding:10px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;resize:vertical;margin:6px 0 8px}
  
 /* ==========================================
    DESKTOP RESPONSIVE DESIGN
@@ -381,7 +388,7 @@ function icon(n){var m={spinach:'🥬',egg:'🥚',milk:'🥛',rice:'🍚',tomato
  
 // ---------- Database helpers (only used when USE_SUPABASE is true) ----------
 function rowInv(r){return{id:r.item_id,n:r.item_name,q:r.quantity,u:r.unit_type||'individual',a:r.unit_amount,d:r.details||'',e:r.expiration_date||'',i:r.icon||icon(r.item_name)}}
-function rowMine(r){return{n:r.recipe_name,t:r.cook_time||'',ing:r.ingredients||[],st:r.steps||[]}} // NEW
+function rowMine(r){return{n:r.recipe_name,t:r.cook_time||'',ing:r.ingredients||[],st:r.steps||[],notes:r.notes||''}} // NEW
 function rowG(r){return{id:r.grocery_item_id,n:r.item_name,done:r.is_checked}}
 function chk(r){if(r.error)throw r.error;return r.data}
 function fail(e){console.error(e);toast('Database error: '+(e&&e.message?e.message:e))}
@@ -409,6 +416,7 @@ async function loadAll(){
  S.groc=chk(res[1]).map(rowG);
  var sr=chk(res[2]);
  S.mine=sr.filter(function(r){return r.ingredients}).map(rowMine); // NEW: the user's own recipes
+ S.bnotes={};sr.forEach(function(r){if(!r.ingredients&&r.notes)S.bnotes[r.recipe_name]=r.notes}); // NEW: notes on saved recipes
  S.saved=sr.filter(function(r){return !r.ingredients}).map(function(r){return R.findIndex(function(x){return x.n==r.recipe_name})}).filter(function(i){return i>-1});
  // CHANGED: select('*') so new columns (notify_days, in_app_alerts, is_admin) load if they exist
  var pr=await sb.from('users').select('*').eq('user_id',S.uid).single();
@@ -429,6 +437,7 @@ function render(){
  else if(S.screen=='forgot')h=forgotH();
  else{h=S.tab=='inv'?invH():S.tab=='saved'?savedH():S.tab=='sug'?sugH():S.tab=='profile'?profileH():S.tab=='alerts'?alertsH():S.tab=='admin'?adminH():grocH();h+=tabsH()} // CHANGED: alerts + admin pages
  a.innerHTML=h;
+ a.classList.toggle('recipes',S.screen=='app'&&(S.tab=='saved'||S.tab=='sug')); // NEW: read-only cursor on Recipes pages
 }
 // ---------- NEW: sign-up split into 4 steps (onboarding flow) ----------
 var SU_STEPS=[
@@ -551,9 +560,26 @@ function savedH(){
  if(!l.length&&!m.length)h+='<div class="note">No saved recipes yet. Add your own, or save one from the suggestions.</div>';
  // NEW: the user's own recipes, marked "Yours"
  m.forEach(function(r,k){var miss=r.ing.filter(function(g){return !has(g)}).length;
-  h+='<details><summary><span>'+esc(r.n)+(r.t?' <span class="meta">'+esc(r.t)+'</span>':'')+' <span class="pill mine">Yours</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol><div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:4px 16px">'+(miss?'<button class="mini" style="white-space:nowrap;padding:0" onclick="addMissingMine('+k+')">Add missing to grocery list</button>':'')+'<button class="mini" style="white-space:nowrap;padding:0" onclick="delMine('+k+')">Delete recipe</button></div></details>'});
- l.forEach(function(i){var r=R[i];h+='<details><summary><span>'+r.n+' <span class="meta">'+r.t+'</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol><button class="mini" onclick="unsave('+i+')">Remove from saved</button></details>'});
+  h+='<details><summary><span>'+esc(r.n)+(r.t?' <span class="meta">'+esc(r.t)+'</span>':'')+' <span class="pill mine">Yours</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol>'+noteH('m',k,r.notes)+'<div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:4px 16px">'+(miss?'<button class="mini" style="white-space:nowrap;padding:0" onclick="addMissingMine('+k+')">Add missing to grocery list</button>':'')+'<button class="mini" style="white-space:nowrap;padding:0" onclick="delMine('+k+')">Delete recipe</button></div></details>'});
+ l.forEach(function(i){var r=R[i];h+='<details><summary><span>'+r.n+' <span class="meta">'+r.t+'</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol>'+noteH('b',i,S.bnotes[r.n])+'<button class="mini" style="margin-bottom:12px;padding:0" onclick="unsave('+i+')">Remove from saved</button></details>'});
  return h+'<div class="btnrow"><button class="btn dash" onclick="openRecipeForm()">+ Add your own recipe</button><button class="btn acc" onclick="go(\'app\',\'sug\')">See suggested recipes</button></div>'}
+// NEW: "My notes" on saved recipes (kind 'm' = your own recipe, 'b' = built-in recipe)
+function noteInner(t){return '<b>My notes</b><div class="notetext">'+(t?esc(t):'<span class="meta">No notes yet. Add changes, swaps or tips for next time.</span>')+'</div><button class="mini" style="padding:0" onclick="editNote(this)">'+(t?'Edit notes':'+ Add notes')+'</button>'}
+function noteH(kind,k,t){return '<div class="notes" data-kind="'+kind+'" data-k="'+k+'">'+noteInner(t)+'</div>'}
+function getNote(b){var k=+b.dataset.k;return b.dataset.kind=='m'?(S.mine[k]&&S.mine[k].notes||''):(S.bnotes[R[k].n]||'')}
+function editNote(btn){var b=btn.closest('.notes');
+ b.innerHTML='<b>My notes</b><textarea class="notearea" maxlength="1000" aria-label="My notes" placeholder="e.g. Used half the sugar. Add garlic next time.">'+esc(getNote(b))+'</textarea><div class="err" role="alert" style="min-height:0"></div><div class="row"><button class="btn acc" style="width:auto;margin:0;padding:8px 16px" onclick="saveNote(this)">Save notes</button><button class="mini" onclick="cancelNote(this)">Cancel</button></div>';
+ var ta=b.querySelector('textarea');ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length)}
+function cancelNote(btn){var b=btn.closest('.notes');b.innerHTML=noteInner(getNote(b))}
+async function saveNote(btn){var b=btn.closest('.notes'),t=b.querySelector('textarea').value.trim(),kind=b.dataset.kind,k=+b.dataset.k;
+ var name=kind=='m'?S.mine[k].n:R[k].n;
+ if(sb){btn.disabled=true;
+  var q=sb.from('saved_recipes').update({notes:t||null}).eq('user_id',S.uid).eq('recipe_name',name);
+  q=kind=='m'?q.not('ingredients','is',null):q.is('ingredients',null);
+  var r=await q;btn.disabled=false;
+  if(r.error){b.querySelector('.err').textContent=/notes/.test(r.error.message||'')?'Notes need a quick database update before they can be saved.':'Could not save notes: '+r.error.message;return}}
+ if(kind=='m')S.mine[k].notes=t;else S.bnotes[name]=t;
+ b.innerHTML=noteInner(t);toast('Notes saved.',1)}
 // NEW: form for adding your own recipe
 function openRecipeForm(){
  var m=document.createElement('div');m.className='modal';m.id='modal';
@@ -773,7 +799,7 @@ function tabsH(){var t=S.tab;
 // Restore the signed-in account and load its profile from Supabase.
 (async function start(){
  if(sb){var s=null;try{s=JSON.parse(localStorage.getItem('pantry_user'))}catch(e){}
-  if(s&&s.id){S.uid=s.id;S.user=s.u;S.screen='app';S.tab='inv';S.inv=[];S.groc=[];S.saved=[];S.mine=[];S.used=[];
+  if(s&&s.id){S.uid=s.id;S.user=s.u;S.screen='app';S.tab='inv';S.inv=[];S.groc=[];S.saved=[];S.mine=[];S.bnotes={};S.used=[];
    try{await loadAll()}catch(e){fail(e)}}
  }else{try{var p=JSON.parse(localStorage.getItem('pantry_profile_offline')||'null');if(p){S.profile=p;S.user=p.username;S.email=p.email;S.screen='app'}}catch(e){}}
  if(location.hash){if(!readHashRoute())location.hash=routeForState()}else location.hash=routeForState();
