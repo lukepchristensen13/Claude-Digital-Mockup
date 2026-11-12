@@ -48,6 +48,7 @@ select{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px
 .ugrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0 10px} /* NEW: unit type / measurement / quantity */
 .ingrow{border:1.5px solid var(--line);border-radius:12px;padding:4px 12px 12px;margin-bottom:10px} /* NEW: one recipe ingredient */
 .ingrow .inhead{display:flex;gap:8px;align-items:flex-end}.ingrow .inhead>div{flex:1}
+.ingrow .amtlink{padding:8px 0 0;font-size:.9rem} /* NEW: optional ingredient amount */
 .ingrow .rm{border:0;background:none;color:var(--mute);font-size:1.1rem;cursor:pointer;padding:12px 4px}
 .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1.5px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));display:flex;align-items:flex-end;justify-content:center;gap:10px;max-width:480px;margin:0 auto}
 .tab{flex:1;border:0;background:none;color:var(--mute);font:inherit;font-size:.85rem;padding:8px 4px;border-radius:12px;cursor:pointer}
@@ -255,7 +256,7 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
 .profile-radio input{width:auto;accent-color:var(--ok)}
 .profile-radio label:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 @media(max-width:700px){.profile-grid{grid-template-columns:1fr}.profile-fields{grid-template-columns:1fr}.profile-fields .wide{grid-column:auto}}
-
+ 
 /* NEW: sign-up onboarding steps */
 .steps{display:flex;gap:6px;margin:6px 0 4px;max-width:850px}
 .steps span{flex:1;height:6px;border-radius:99px;background:var(--line)}
@@ -267,7 +268,7 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
 .daychk label{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:11px;padding:10px 13px;margin:0;cursor:pointer;background:var(--card);font-weight:600}
 .daychk input{width:auto;accent-color:var(--ok)}
 .daychk label:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
-
+ 
 /* NEW: alerts */
 .tab{position:relative}
 @media (max-width:767px){.tabs{gap:2px;padding-left:4px;padding-right:4px}.tab{font-size:.78rem;padding:8px 2px;min-width:0}.tab.mid{flex:1.3}}
@@ -277,7 +278,7 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
 .alert .pic{width:42px;height:42px;font-size:1.5rem}
 .alert .msg{margin:0 0 4px}
 .pill.ai{background:var(--ink);color:var(--bg);font-size:.7rem;padding:2px 8px;margin-left:6px;vertical-align:1px}
-
+ 
 /* NEW: admin portal */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
 .stat{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:14px}
@@ -317,7 +318,7 @@ if(USE_SUPABASE){
 var S={screen:'create',tab:'inv',sel:null,user:null,uid:null,
 inv:[{id:1,n:'Spinach',q:1,u:'oz',a:5,d:'Bagged',e:off(1),i:'🥬'},{id:2,n:'Eggs',q:6,u:'individual',d:'',e:off(6),i:'🥚'},{id:3,n:'Milk',q:1,u:'gallon',a:0.5,d:'',e:off(3),i:'🥛'},{id:4,n:'Rice',q:2,u:'lb',a:2,d:'',e:off(200),i:'🍚'},{id:5,n:'Tomatoes',q:4,u:'individual',d:'',e:off(9),i:'🍅'}],
 groc:[{id:1,n:'Bread',done:false},{id:2,n:'Butter',done:true}],
-saved:[0],mine:[],used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none',notify_days:[7,3,1],in_app_alerts:true,is_admin:false},nid:10,gopen:false,
+saved:[0],mine:[],bnotes:{},used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none',notify_days:[7,3,1],in_app_alerts:true,is_admin:false},nid:10,gopen:false,
 notes:[],su:{step:1,notification_preference:'email',notify_days:[7,3,1]},admin:null}; // NEW: notes = alerts, su = sign-up steps, admin = admin stats
 var MAXQ=99; // NEW: max quantity for an item
 // NEW: unit types. [singular, plural]
@@ -583,14 +584,22 @@ async function saveNote(btn){var b=btn.closest('.notes'),t=b.querySelector('text
 // NEW: form for adding your own recipe
 function openRecipeForm(){
  var m=document.createElement('div');m.className='modal';m.id='modal';
- m.innerHTML='<div class="sheet"><h2>Add Your Own Recipe</h2><label for="rn">Recipe name</label><input id="rn" maxlength="60"><label for="rt">Cook time (optional)</label><input id="rt" maxlength="20" placeholder="e.g. 20 min"><label>Ingredients</label><div class="meta">Choose Individual to just count items (3 eggs), or pick a unit and enter the measurement (5 oz).</div><div id="ingrows" style="margin-top:8px"></div><button class="btn ghost" style="margin-top:0;padding:10px" onclick="addIngRow()">+ Add another ingredient</button><label for="rs">Steps (one per line)</label><textarea id="rs" placeholder="Whisk the eggs.&#10;Cook the spinach.&#10;Add eggs and stir."></textarea><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveRecipe()">Save recipe</button></div></div>';
+ m.innerHTML='<div class="sheet"><h2>Add Your Own Recipe</h2><label for="rn">Recipe name</label><input id="rn" maxlength="60"><label for="rt">Cook time (optional)</label><input id="rt" maxlength="20" placeholder="e.g. 20 min"><label>Ingredients</label><div class="meta">Just type each ingredient. Amounts are optional: tap “+ Add amount” to add one (like 3 eggs or 5 oz).</div><div id="ingrows" style="margin-top:8px"></div><button class="btn ghost" style="margin-top:0;padding:10px" onclick="addIngRow()">+ Add another ingredient</button><label for="rs">Steps (one per line)</label><textarea id="rs" placeholder="Whisk the eggs.&#10;Cook the spinach.&#10;Add eggs and stir."></textarea><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveRecipe()">Save recipe</button></div></div>';
  document.body.appendChild(m);addIngRow();addIngRow();document.getElementById('rn').focus()}
 function addIngRow(){var d=document.createElement('div');d.className='ingrow';
- d.innerHTML='<div class="inhead"><div><label>Ingredient</label><input class="inm" aria-label="Ingredient name" maxlength="40" placeholder="e.g. Spinach"></div><button class="rm" aria-label="Remove ingredient" onclick="this.closest(\'.ingrow\').remove()">&#10005;</button></div>'+unitBox('individual',null,1);
+ d.innerHTML='<div class="inhead"><div><label>Ingredient</label><input class="inm" aria-label="Ingredient name" maxlength="40" placeholder="e.g. Spinach"></div><button class="rm" aria-label="Remove ingredient" onclick="this.closest(\'.ingrow\').remove()">&#10005;</button></div><button type="button" class="mini amtlink" aria-expanded="false" onclick="toggleAmt(this)">+ Add amount (optional)</button><div class="amtbox hide">'+unitBox('individual',null,'')+'</div>'; // CHANGED: amount is optional and hidden until asked for
  document.getElementById('ingrows').appendChild(d)}
+// NEW: show/hide the amount fields for one ingredient
+function toggleAmt(btn){var box=btn.nextElementSibling,open=box.classList.toggle('hide')===false;
+ btn.textContent=open?'− Remove amount':'+ Add amount (optional)';btn.setAttribute('aria-expanded',open);
+ if(open)box.querySelector('.uq').focus()}
 function readIngs(){var out=[],rows=document.querySelectorAll('#ingrows .ingrow');
  for(var i=0;i<rows.length;i++){var n=rows[i].querySelector('.inm').value.trim();if(!n)continue;
-  var un=readUnit(rows[i].querySelector('.unitbox'));if(typeof un=='string')return n+': '+un;
+  // CHANGED: no amount if the amount fields are hidden or left blank
+  var box=rows[i].querySelector('.amtbox'),ub=box.querySelector('.unitbox');
+  var blank=!ub.querySelector('.uq').value.trim()&&(isInd(ub.querySelector('.uu').value)||!ub.querySelector('.ua').value.trim());
+  if(box.classList.contains('hide')||blank){out.push({n:n,u:'individual',a:null,q:null});continue}
+  var un=readUnit(ub);if(typeof un=='string')return n+': '+un;
   out.push({n:n,u:un.u,a:un.a,q:un.q})}
  return out}
 function lines(id){return document.getElementById(id).value.split('\n').map(function(x){return x.trim()}).filter(Boolean)}
@@ -700,7 +709,7 @@ function alertsH(){var l=allAlerts(),ds=alertDays();
  l.forEach(function(a){var how=a.ch=='email'?'Sent by email':a.ch=='text'?'Sent by text':'In-app';
   h+='<div class="alert'+(a.read?'':' unread')+'"><div class="pic">'+a.icon+'</div><div class="grow"><p class="msg">'+esc(a.msg)+(a.ai?'<span class="pill ai" title="Written by AI">AI</span>':'')+'</p><div class="meta">'+(a.read?'':'<b>New</b> &middot; ')+how+' &middot; '+esc(a.when)+'</div></div>'+(a.read?'':'<button class="mini" onclick="markRead(\''+a.key+'\')">Mark read</button>')+'</div>'});
  return h}
-
+ 
 // =====================================================================
 // NEW: NOTIFICATION SETTINGS (used on the Profile page and in sign-up step 4)
 // =====================================================================
@@ -722,7 +731,7 @@ async function saveNotif(){var n=readNotif(),p=S.profile||{},msg='Notification s
   delete r.data.password_hash;S.profile=Object.assign({},S.profile,patch,r.data)}
  else{S.profile=Object.assign({},S.profile,patch);try{localStorage.setItem('pantry_profile_offline',JSON.stringify(Object.assign({username:S.user},S.profile)))}catch(e){}}
  toast(msg,1);render()}
-
+ 
 // =====================================================================
 // NEW: ADMIN PORTAL (only for users with is_admin = true)
 // =====================================================================
@@ -766,7 +775,7 @@ function adminH(){
  h+='<h2 style="margin:6px 0 10px">Users</h2><div class="tablewrap"><table><thead><tr><th>Username</th><th>Name</th><th>Email</th><th>Alerts</th><th>Food items</th><th>Grocery items</th><th>Joined</th></tr></thead><tbody>'+
   d.users.slice().sort(function(a,b){return (b.created_at||'')<(a.created_at||'')?-1:1}).map(function(u){return '<tr><td>'+esc(u.username||'')+(u.is_admin?' <span class="pill" style="font-size:.7rem">Admin</span>':'')+'</td><td>'+esc([u.first_name,u.last_name].filter(Boolean).join(' '))+'</td><td>'+esc(u.email||'')+'</td><td>'+esc(u.notification_preference||'none')+'</td><td>'+cnt(d.items.filter(function(i){return !i.is_used_up}),u.user_id)+'</td><td>'+cnt(d.groc,u.user_id)+'</td><td>'+esc((u.created_at||'').slice(0,10)||'–')+'</td></tr>'}).join('')+'</tbody></table></div>';
  return h}
-
+ 
 function profileH(){var p=S.profile||{},full=[p.first_name,p.last_name].filter(Boolean).join(' ')||S.user||'Your profile',initial=(p.first_name||S.user||'U').charAt(0).toUpperCase();
  return '<div class="profile-grid"><section><div class="profile-card profile-identity"><div class="profile-avatar" aria-hidden="true">'+esc(initial)+'</div><h2>'+esc(full)+'</h2><div class="meta">@'+esc(S.user||'username')+'</div><p class="profile-bio">'+esc(p.bio||'Add a short bio to tell people a little about yourself.')+'</p></div><div class="note">🔒 Your password is private and is never displayed here.</div>'+(isAdmin()?'<button class="btn" onclick="go(\'app\',\'admin\')">📊 Open Admin Portal</button>':'')+'</section>'+
  '<div><section class="profile-card"><h1>My Profile</h1><p class="sub">Update your account details.</p><div class="profile-fields">'+
