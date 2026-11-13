@@ -48,6 +48,11 @@ select{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px
 .ugrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0 10px} /* NEW: unit type / measurement / quantity */
 .ingrow{border:1.5px solid var(--line);border-radius:12px;padding:4px 12px 12px;margin-bottom:10px} /* NEW: one recipe ingredient */
 .ingrow .inhead{display:flex;gap:8px;align-items:flex-end}.ingrow .inhead>div{flex:1}
+.cookbtn{width:auto!important;display:inline-block;margin:4px 0 12px!important;padding:9px 16px!important} /* NEW: I made this */
+.cookrow{border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.cookrow select{margin-top:8px}.ccust{display:flex;gap:8px;align-items:center;margin-top:8px}.ccust input{flex:1}
+.cafter{margin-top:6px;font-weight:600}.cafter.gone{color:var(--warn)}
+.ingrow .amtlink{padding:8px 0 0;font-size:.9rem} /* NEW: optional ingredient amount */
 .ingrow .rm{border:0;background:none;color:var(--mute);font-size:1.1rem;cursor:pointer;padding:12px 4px}
 .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1.5px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));display:flex;align-items:flex-end;justify-content:center;gap:10px;max-width:480px;margin:0 auto}
 .tab{flex:1;border:0;background:none;color:var(--mute);font:inherit;font-size:.85rem;padding:8px 4px;border-radius:12px;cursor:pointer}
@@ -317,7 +322,7 @@ if(USE_SUPABASE){
 var S={screen:'create',tab:'inv',sel:null,user:null,uid:null,
 inv:[{id:1,n:'Spinach',q:1,u:'oz',a:5,d:'Bagged',e:off(1),i:'🥬'},{id:2,n:'Eggs',q:6,u:'individual',d:'',e:off(6),i:'🥚'},{id:3,n:'Milk',q:1,u:'gallon',a:0.5,d:'',e:off(3),i:'🥛'},{id:4,n:'Rice',q:2,u:'lb',a:2,d:'',e:off(200),i:'🍚'},{id:5,n:'Tomatoes',q:4,u:'individual',d:'',e:off(9),i:'🍅'}],
 groc:[{id:1,n:'Bread',done:false},{id:2,n:'Butter',done:true}],
-saved:[0],mine:[],used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none',notify_days:[7,3,1],in_app_alerts:true,is_admin:false},nid:10,gopen:false,
+saved:[0],mine:[],bnotes:{},used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none',notify_days:[7,3,1],in_app_alerts:true,is_admin:false},nid:10,gopen:false,
 notes:[],su:{step:1,notification_preference:'email',notify_days:[7,3,1]},admin:null}; // NEW: notes = alerts, su = sign-up steps, admin = admin stats
 var MAXQ=99; // NEW: max quantity for an item
 // NEW: unit types. [singular, plural]
@@ -521,6 +526,69 @@ async function useItem(id){
  S.used.push(x); // NEW: keep used item so it shows in grocery suggestions
  if(S.sel==id)S.sel=null;
  toast(x.n+' marked as used.',1);render()}
+// ===== NEW: "I made this" – take a recipe's ingredients out of the food inventory =====
+var WT={oz:28.3495,lb:453.592,g:1,kg:1000},VOL={ml:1,liter:1000,'fl oz':29.5735,cup:236.588,tbsp:14.7868,tsp:4.92892,pint:473.176,quart:946.353,gallon:3785.41};
+function conv(v,f,t){if(f==t)return v;if(WT[f]&&WT[t])return v*WT[f]/WT[t];if(VOL[f]&&VOL[t])return v*VOL[f]/VOL[t];return null}
+function cookBtn(kind,k){return '<div><button class="btn acc cookbtn" onclick="openCook(\''+kind+'\','+k+')">🍳 I made this</button></div>'}
+// which inventory item an ingredient comes out of (same name; soonest-expiring first)
+function invMatchFor(n){n=n.toLowerCase();return S.inv.filter(function(x){return x.n.toLowerCase()==n}).sort(function(a,b){if(!a.e)return 1;if(!b.e)return -1;return a.e<b.e?-1:1})[0]}
+// how much of item x the ingredient g uses, in x's unit (count for individual items); null = can't tell
+function cookUse(g,x){
+ if(isInd(x.u)){if(isInd(g.u)&&g.q)return Math.ceil(+g.q);return null} // counted items: only when the recipe gives a count
+ if(!(x.a>0))return null;
+ if(!isInd(g.u)&&g.a)return conv(+g.a*(+g.q||1),g.u,x.u);
+ return null}
+// what's left of item x after using "used"
+function cookAfter(x,used){
+ if(isInd(x.u)){var r=+x.q-Math.ceil(used);return r<=0?{gone:1}:{q:r,a:x.a}}
+ var tot=+x.a*+x.q,rem=+(tot-used).toFixed(4);
+ if(rem<=0.005)return {gone:1};
+ var per=rem/+x.a;
+ if(Math.abs(per-Math.round(per))<0.001)return {q:Math.round(per),a:+x.a};
+ return {q:1,a:+rem.toFixed(2)}}
+function unitWord(x,v){return isInd(x.u)?(+v==1?'item':'items'):uname(x.u,v)}
+function openCook(kind,k){var rec=kind=='m'?S.mine[k]:R[k];if(!rec)return;
+ S.cook={name:rec.n,rows:rec.ing.map(ingObj).map(function(g){var x=invMatchFor(g.n);return {g:g,x:x,sub:x?cookUse(g,x):null}})};
+ var have=S.cook.rows.filter(function(r){return r.x}),miss=S.cook.rows.filter(function(r){return !r.x});
+ var h='<div class="sheet"><h2>Update Your Inventory</h2><p class="sub" style="margin-bottom:10px">Made <b>'+esc(rec.n)+'</b>? Here’s what will come out of your food inventory. Change anything that looks off.</p>';
+ if(!have.length)h+='<div class="note">None of these ingredients are in your inventory, so there’s nothing to update.</div><button class="btn ghost" onclick="closeM()">Close</button></div>';
+ else{
+  S.cook.rows.forEach(function(r,j){if(!r.x)return;var x=r.x,ok=r.sub!=null;
+   h+='<div class="cookrow"><b>'+ingText(r.g)+'</b><div class="meta">In inventory: '+esc(x.n)+' '+amt(x)+'</div>'+
+   '<select class="cmode" id="cm'+j+'" aria-label="How much '+esc(r.g.n)+' did you use?" onchange="cookPrev('+j+')">'+
+   (ok?'<option value="sub" selected>Use '+num(r.sub)+' '+esc(unitWord(x,r.sub))+'</option>':'')+
+   '<option value="all">Used it all</option><option value="custom">A different amount…</option><option value="none"'+(ok?'':' selected')+'>Don’t change</option></select>'+
+   '<div class="ccust hide" id="cc'+j+'"><input type="number" min="0" step="any" id="cv'+j+'" aria-label="Amount used" oninput="cookPrev('+j+')"><span class="meta">'+esc(isInd(x.u)?'items':x.u)+'</span></div>'+
+   (ok?'':'<div class="meta" style="margin-top:6px">Couldn’t tell how much was used, so choose an option.</div>')+
+   '<div class="cafter meta" id="ca'+j+'"></div></div>'});
+  if(miss.length)h+='<p class="meta">Not in your inventory: '+miss.map(function(r){return esc(r.g.n)}).join(', ')+'</p>';
+  h+='<div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" id="cookgo" onclick="applyCook()">Update inventory</button></div></div>'}
+ var m=document.createElement('div');m.className='modal';m.id='modal';m.innerHTML=h;document.body.appendChild(m);
+ S.cook.rows.forEach(function(r,j){if(r.x)cookPrev(j)})}
+function cookUsed(j){var r=S.cook.rows[j],m=document.getElementById('cm'+j).value;
+ if(m=='none')return null;if(m=='all')return Infinity;if(m=='sub')return r.sub;
+ var c=document.getElementById('cv'+j).value.trim();return c===''?NaN:+c}
+function cookPrev(j){var r=S.cook.rows[j],m=document.getElementById('cm'+j).value,el=document.getElementById('ca'+j);
+ var er=document.querySelector('.sheet #e');if(er)er.textContent='';
+ document.getElementById('cc'+j).classList.toggle('hide',m!='custom');
+ var u=cookUsed(j);el.classList.remove('gone');
+ if(u===null){el.textContent='No change';return}
+ if(isNaN(u)||u<0){el.textContent='Enter how much you used';return}
+ var a=cookAfter(r.x,u);if(a.gone){el.textContent='→ Used up (it will move to grocery suggestions)';el.classList.add('gone')}
+ else el.textContent='→ Left after: '+amt({u:r.x.u,a:a.a,q:a.q})}
+async function applyCook(){var rows=S.cook.rows,todo=[];
+ for(var j=0;j<rows.length;j++){if(!rows[j].x)continue;var u=cookUsed(j);if(u===null)continue;
+  if(isNaN(u)||u<0)return err(rows[j].g.n+': please enter how much you used.');
+  todo.push({x:rows[j].x,a:cookAfter(rows[j].x,u)})}
+ if(!todo.length){closeM();return toast('No changes made.',1)}
+ var btn=document.getElementById('cookgo');btn.disabled=true;
+ for(var i=0;i<todo.length;i++){var x=todo[i].x,a=todo[i].a;
+  if(sb){var r=a.gone?await sb.from('inventory_items').update({is_used_up:true}).eq('item_id',x.id)
+                     :await sb.from('inventory_items').update({quantity:a.q,unit_amount:isInd(x.u)?null:a.a}).eq('item_id',x.id);
+   if(r.error){btn.disabled=false;return err('Could not update '+x.n+': '+r.error.message)}}
+  if(a.gone){S.inv=S.inv.filter(function(y){return y.id!=x.id});S.used.push(x)}else{x.q=a.q;if(!isInd(x.u))x.a=a.a}}
+ var used=todo.filter(function(t){return t.a.gone}).length;
+ closeM();render();toast('Inventory updated'+(used?' ('+used+' used up)':'')+'.',1)}
 function openForm(id){var x=S.inv.filter(function(i){return i.id==id})[0]||{n:'',q:'',e:'',d:''};
  var m=document.createElement('div');m.className='modal';m.id='modal';
  var ne=!!id&&!x.e; // NEW: editing an item that has no expiration date
@@ -560,8 +628,8 @@ function savedH(){
  if(!l.length&&!m.length)h+='<div class="note">No saved recipes yet. Add your own, or save one from the suggestions.</div>';
  // NEW: the user's own recipes, marked "Yours"
  m.forEach(function(r,k){var miss=r.ing.filter(function(g){return !has(g)}).length;
-  h+='<details><summary><span>'+esc(r.n)+(r.t?' <span class="meta">'+esc(r.t)+'</span>':'')+' <span class="pill mine">Yours</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol>'+noteH('m',k,r.notes)+'<div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:4px 16px">'+(miss?'<button class="mini" style="white-space:nowrap;padding:0" onclick="addMissingMine('+k+')">Add missing to grocery list</button>':'')+'<button class="mini" style="white-space:nowrap;padding:0" onclick="delMine('+k+')">Delete recipe</button></div></details>'});
- l.forEach(function(i){var r=R[i];h+='<details><summary><span>'+r.n+' <span class="meta">'+r.t+'</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol>'+noteH('b',i,S.bnotes[r.n])+'<button class="mini" style="margin-bottom:12px;padding:0" onclick="unsave('+i+')">Remove from saved</button></details>'});
+  h+='<details><summary><span>'+esc(r.n)+(r.t?' <span class="meta">'+esc(r.t)+'</span>':'')+' <span class="pill mine">Yours</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol>'+cookBtn('m',k)+noteH('m',k,r.notes)+'<div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:4px 16px">'+(miss?'<button class="mini" style="white-space:nowrap;padding:0" onclick="addMissingMine('+k+')">Add missing to grocery list</button>':'')+'<button class="mini" style="white-space:nowrap;padding:0" onclick="delMine('+k+')">Delete recipe</button></div></details>'});
+ l.forEach(function(i){var r=R[i];h+='<details><summary><span>'+r.n+' <span class="meta">'+r.t+'</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol>'+cookBtn('b',i)+noteH('b',i,S.bnotes[r.n])+'<button class="mini" style="margin-bottom:12px;padding:0" onclick="unsave('+i+')">Remove from saved</button></details>'});
  return h+'<div class="btnrow"><button class="btn dash" onclick="openRecipeForm()">+ Add your own recipe</button><button class="btn acc" onclick="go(\'app\',\'sug\')">See suggested recipes</button></div>'}
 // NEW: "My notes" on saved recipes (kind 'm' = your own recipe, 'b' = built-in recipe)
 function noteInner(t){return '<b>My notes</b><div class="notetext">'+(t?esc(t):'<span class="meta">No notes yet. Add changes, swaps or tips for next time.</span>')+'</div><button class="mini" style="padding:0" onclick="editNote(this)">'+(t?'Edit notes':'+ Add notes')+'</button>'}
@@ -583,14 +651,22 @@ async function saveNote(btn){var b=btn.closest('.notes'),t=b.querySelector('text
 // NEW: form for adding your own recipe
 function openRecipeForm(){
  var m=document.createElement('div');m.className='modal';m.id='modal';
- m.innerHTML='<div class="sheet"><h2>Add Your Own Recipe</h2><label for="rn">Recipe name</label><input id="rn" maxlength="60"><label for="rt">Cook time (optional)</label><input id="rt" maxlength="20" placeholder="e.g. 20 min"><label>Ingredients</label><div class="meta">Choose Individual to just count items (3 eggs), or pick a unit and enter the measurement (5 oz).</div><div id="ingrows" style="margin-top:8px"></div><button class="btn ghost" style="margin-top:0;padding:10px" onclick="addIngRow()">+ Add another ingredient</button><label for="rs">Steps (one per line)</label><textarea id="rs" placeholder="Whisk the eggs.&#10;Cook the spinach.&#10;Add eggs and stir."></textarea><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveRecipe()">Save recipe</button></div></div>';
+ m.innerHTML='<div class="sheet"><h2>Add Your Own Recipe</h2><label for="rn">Recipe name</label><input id="rn" maxlength="60"><label for="rt">Cook time (optional)</label><input id="rt" maxlength="20" placeholder="e.g. 20 min"><label>Ingredients</label><div class="meta">Just type each ingredient. Amounts are optional: tap “+ Add amount” to add one (like 3 eggs or 5 oz).</div><div id="ingrows" style="margin-top:8px"></div><button class="btn ghost" style="margin-top:0;padding:10px" onclick="addIngRow()">+ Add another ingredient</button><label for="rs">Steps (one per line)</label><textarea id="rs" placeholder="Whisk the eggs.&#10;Cook the spinach.&#10;Add eggs and stir."></textarea><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveRecipe()">Save recipe</button></div></div>';
  document.body.appendChild(m);addIngRow();addIngRow();document.getElementById('rn').focus()}
 function addIngRow(){var d=document.createElement('div');d.className='ingrow';
- d.innerHTML='<div class="inhead"><div><label>Ingredient</label><input class="inm" aria-label="Ingredient name" maxlength="40" placeholder="e.g. Spinach"></div><button class="rm" aria-label="Remove ingredient" onclick="this.closest(\'.ingrow\').remove()">&#10005;</button></div>'+unitBox('individual',null,1);
+ d.innerHTML='<div class="inhead"><div><label>Ingredient</label><input class="inm" aria-label="Ingredient name" maxlength="40" placeholder="e.g. Spinach"></div><button class="rm" aria-label="Remove ingredient" onclick="this.closest(\'.ingrow\').remove()">&#10005;</button></div><button type="button" class="mini amtlink" aria-expanded="false" onclick="toggleAmt(this)">+ Add amount (optional)</button><div class="amtbox hide">'+unitBox('individual',null,'')+'</div>'; // CHANGED: amount is optional and hidden until asked for
  document.getElementById('ingrows').appendChild(d)}
+// NEW: show/hide the amount fields for one ingredient
+function toggleAmt(btn){var box=btn.nextElementSibling,open=box.classList.toggle('hide')===false;
+ btn.textContent=open?'− Remove amount':'+ Add amount (optional)';btn.setAttribute('aria-expanded',open);
+ if(open)box.querySelector('.uq').focus()}
 function readIngs(){var out=[],rows=document.querySelectorAll('#ingrows .ingrow');
  for(var i=0;i<rows.length;i++){var n=rows[i].querySelector('.inm').value.trim();if(!n)continue;
-  var un=readUnit(rows[i].querySelector('.unitbox'));if(typeof un=='string')return n+': '+un;
+  // CHANGED: no amount if the amount fields are hidden or left blank
+  var box=rows[i].querySelector('.amtbox'),ub=box.querySelector('.unitbox');
+  var blank=!ub.querySelector('.uq').value.trim()&&(isInd(ub.querySelector('.uu').value)||!ub.querySelector('.ua').value.trim());
+  if(box.classList.contains('hide')||blank){out.push({n:n,u:'individual',a:null,q:null});continue}
+  var un=readUnit(ub);if(typeof un=='string')return n+': '+un;
   out.push({n:n,u:un.u,a:un.a,q:un.q})}
  return out}
 function lines(id){return document.getElementById(id).value.split('\n').map(function(x){return x.trim()}).filter(Boolean)}
@@ -617,7 +693,7 @@ function sugH(){
  var h='<div style="margin-bottom:10px"><button class="mini" type="button" onclick="go(\'app\',\'saved\')">← Back to saved recipes</button></div><div class="between"><h1>Suggested Recipes</h1><span class="pill sug">Suggested</span></div><p class="sub">Ideas based on what is in your inventory.</p>';
  if(!S.inv.length)return h+'<div class="note" style="border-color:var(--bad)">Add food items to see recipe ideas.</div><button class="btn acc" onclick="go(\'app\',\'inv\')">Go to inventory</button>';
  R.map(function(r,i){return{r:r,i:i,m:r.ing.filter(function(g){return !has(g)}),h:r.ing.filter(has).length}}).filter(function(o){return o.h>0}).sort(function(a,b){return a.m.length-b.m.length}).forEach(function(o){
- h+='<details><summary><span>'+o.r.n+' <span class="meta">'+o.r.t+'</span></span></summary><p class="meta">'+(o.m.length?'Missing: '+o.m.map(function(g){return esc(ingObj(g).n)}).join(', '):'You have everything.')+'</p><b>Ingredients</b>'+ingList(o.r.ing)+'<b>Steps</b><ol>'+o.r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol><div class="row">'+(S.saved.indexOf(o.i)<0?'<button class="mini" onclick="save('+o.i+')">Save recipe</button>':'<span class="meta">Saved</span>')+(o.m.length?'<button class="mini" onclick="addMissing('+o.i+')">Add missing to grocery list</button>':'')+'</div></details>'});
+ h+='<details><summary><span>'+o.r.n+' <span class="meta">'+o.r.t+'</span></span></summary><p class="meta">'+(o.m.length?'Missing: '+o.m.map(function(g){return esc(ingObj(g).n)}).join(', '):'You have everything.')+'</p><b>Ingredients</b>'+ingList(o.r.ing)+'<b>Steps</b><ol>'+o.r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol>'+cookBtn('b',o.i)+'<div class="row" style="margin-bottom:12px">'+(S.saved.indexOf(o.i)<0?'<button class="mini" onclick="save('+o.i+')">Save recipe</button>':'<span class="meta">Saved</span>')+(o.m.length?'<button class="mini" onclick="addMissing('+o.i+')">Add missing to grocery list</button>':'')+'</div></details>'});
  return h}
 async function save(i){
  if(sb){try{chk(await sb.from('saved_recipes').insert({user_id:S.uid,recipe_name:R[i].n}).select().single())}catch(e){return fail(e)}}
