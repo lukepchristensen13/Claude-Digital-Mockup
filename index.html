@@ -52,6 +52,12 @@ select{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px
 .cookrow{border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
 .cookrow select{margin-top:8px}.ccust{display:flex;gap:8px;align-items:center;margin-top:8px}.ccust input{flex:1}
 .cafter{margin-top:6px;font-weight:600}.cafter.gone{color:var(--warn)}
+.ideasec{margin-top:22px} /* NEW: auto-generated recipe ideas */
+.ideasec h2{margin:0}.ideasec .between{flex-wrap:wrap;gap:2px 12px;align-items:baseline}
+.ideahead .meta{font-weight:400}
+.ideahead{display:flex;gap:12px;align-items:center;min-width:0}
+.ideahead img{width:52px;height:52px;border-radius:10px;object-fit:cover;flex:none;background:var(--bg)}
+.recipes a{cursor:pointer;color:var(--ok)}
 .ingrow .amtlink{padding:8px 0 0;font-size:.9rem} /* NEW: optional ingredient amount */
 .ingrow .rm{border:0;background:none;color:var(--mute);font-size:1.1rem;cursor:pointer;padding:12px 4px}
 .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1.5px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));display:flex;align-items:flex-end;justify-content:center;gap:10px;max-width:480px;margin:0 auto}
@@ -322,7 +328,7 @@ if(USE_SUPABASE){
 var S={screen:'create',tab:'inv',sel:null,user:null,uid:null,
 inv:[{id:1,n:'Spinach',q:1,u:'oz',a:5,d:'Bagged',e:off(1),i:'🥬'},{id:2,n:'Eggs',q:6,u:'individual',d:'',e:off(6),i:'🥚'},{id:3,n:'Milk',q:1,u:'gallon',a:0.5,d:'',e:off(3),i:'🥛'},{id:4,n:'Rice',q:2,u:'lb',a:2,d:'',e:off(200),i:'🍚'},{id:5,n:'Tomatoes',q:4,u:'individual',d:'',e:off(9),i:'🍅'}],
 groc:[{id:1,n:'Bread',done:false},{id:2,n:'Butter',done:true}],
-saved:[0],mine:[],bnotes:{},used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none',notify_days:[7,3,1],in_app_alerts:true,is_admin:false},nid:10,gopen:false,
+saved:[0],mine:[],bnotes:{},ideas:{key:null,list:[],detail:{},loading:false,err:''},used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none',notify_days:[7,3,1],in_app_alerts:true,is_admin:false},nid:10,gopen:false,
 notes:[],su:{step:1,notification_preference:'email',notify_days:[7,3,1]},admin:null}; // NEW: notes = alerts, su = sign-up steps, admin = admin stats
 var MAXQ=99; // NEW: max quantity for an item
 // NEW: unit types. [singular, plural]
@@ -334,7 +340,8 @@ function isInd(u){return !u||u=='individual'}
 function amt(x){if(isInd(x.u))return 'x'+num(x.q);return (+x.q>1?num(x.q)+' × ':'')+num(x.a)+' '+uname(x.u,x.a)}
 // recipe ingredients can be old plain text or {n,u,a,q}
 function ingObj(g){return typeof g=='string'?{n:g,u:'individual',a:null,q:null}:g}
-function ingText(g){g=ingObj(g);if(isInd(g.u))return (g.q?num(g.q)+' ':'')+esc(g.n);return (+g.q>1?num(g.q)+' × ':'')+num(g.a)+' '+esc(uname(g.u,g.a))+' '+esc(g.n)}
+function ingText(g){g=ingObj(g);if(g.m)return esc(g.m)+' '+esc(g.n); // NEW: measure text from online recipes
+ if(isInd(g.u))return (g.q?num(g.q)+' ':'')+esc(g.n);return (+g.q>1?num(g.q)+' × ':'')+num(g.a)+' '+esc(uname(g.u,g.a))+' '+esc(g.n)}
 // Unit type -> unit measurement -> quantity (measurement hidden for "individual")
 function unitBox(u,a,q,o){o=o||{};u=u||'individual';
  return '<div class="unitbox"><div class="ugrid"><div><label>Unit type</label><select class="uu" aria-label="Unit type" onchange="uToggle(this)">'+Object.keys(UNITS).map(function(k){return '<option value="'+k+'"'+(k==u?' selected':'')+'>'+(k=='individual'?'Individual':k)+'</option>'}).join('')+'</select></div>'+
@@ -531,7 +538,7 @@ var WT={oz:28.3495,lb:453.592,g:1,kg:1000},VOL={ml:1,liter:1000,'fl oz':29.5735,
 function conv(v,f,t){if(f==t)return v;if(WT[f]&&WT[t])return v*WT[f]/WT[t];if(VOL[f]&&VOL[t])return v*VOL[f]/VOL[t];return null}
 function cookBtn(kind,k){return '<div><button class="btn acc cookbtn" onclick="openCook(\''+kind+'\','+k+')">🍳 I made this</button></div>'}
 // which inventory item an ingredient comes out of (same name; soonest-expiring first)
-function invMatchFor(n){n=n.toLowerCase();return S.inv.filter(function(x){return x.n.toLowerCase()==n}).sort(function(a,b){if(!a.e)return 1;if(!b.e)return -1;return a.e<b.e?-1:1})[0]}
+function invMatchFor(n){n=norm(n);return S.inv.filter(function(x){return norm(x.n)==n}).sort(function(a,b){if(!a.e)return 1;if(!b.e)return -1;return a.e<b.e?-1:1})[0]}
 // how much of item x the ingredient g uses, in x's unit (count for individual items); null = can't tell
 function cookUse(g,x){
  if(isInd(x.u)){if(isInd(g.u)&&g.q)return Math.ceil(+g.q);return null} // counted items: only when the recipe gives a count
@@ -547,7 +554,7 @@ function cookAfter(x,used){
  if(Math.abs(per-Math.round(per))<0.001)return {q:Math.round(per),a:+x.a};
  return {q:1,a:+rem.toFixed(2)}}
 function unitWord(x,v){return isInd(x.u)?(+v==1?'item':'items'):uname(x.u,v)}
-function openCook(kind,k){var rec=kind=='m'?S.mine[k]:R[k];if(!rec)return;
+function openCook(kind,k){var rec=kind=='m'?S.mine[k]:kind=='w'?S.ideas.detail[k]:R[k];if(!rec)return;
  S.cook={name:rec.n,rows:rec.ing.map(ingObj).map(function(g){var x=invMatchFor(g.n);return {g:g,x:x,sub:x?cookUse(g,x):null}})};
  var have=S.cook.rows.filter(function(r){return r.x}),miss=S.cook.rows.filter(function(r){return !r.x});
  var h='<div class="sheet"><h2>Update Your Inventory</h2><p class="sub" style="margin-bottom:10px">Made <b>'+esc(rec.n)+'</b>? Here’s what will come out of your food inventory. Change anything that looks off.</p>';
@@ -589,6 +596,66 @@ async function applyCook(){var rows=S.cook.rows,todo=[];
   if(a.gone){S.inv=S.inv.filter(function(y){return y.id!=x.id});S.used.push(x)}else{x.q=a.q;if(!isInd(x.u))x.a=a.a}}
  var used=todo.filter(function(t){return t.a.gone}).length;
  closeM();render();toast('Inventory updated'+(used?' ('+used+' used up)':'')+'.',1)}
+// ===== NEW: auto-generated recipe ideas from TheMealDB (free recipe database, test key "1") =====
+function mdb(p){return fetch('https://www.themealdb.com/api/json/v1/1/'+p).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})}
+function ideaKey(){return S.inv.map(function(x){return norm(x.n)}).sort().join('|')}
+function ideasH(empty){var I=S.ideas,key=ideaKey();
+ if(I.key!==key&&!I.loading){I.key=key;I.loading=true;setTimeout(loadIdeas,0)}
+ return '<section class="ideasec"><div class="between"><h2>'+(empty?'Recipe ideas to get you started':'More ideas for what you have')+'</h2><button class="mini" onclick="refreshIdeas()">Show different ideas</button></div><p class="meta" style="margin:2px 0 12px">Recipes from TheMealDB, a free recipe database.</p><div id="ideas">'+ideasInner()+'</div></section>'}
+function ideasInner(){var I=S.ideas;
+ if(I.loading)return '<div class="note">Finding recipe ideas…</div>';
+ if(I.err)return '<div class="note" style="border-color:var(--bad)">'+esc(I.err)+' <button class="mini" style="padding:0" onclick="refreshIdeas()">Try again</button></div>';
+ if(!I.list.length)return '<div class="note">No ideas found right now.</div>';
+ return I.list.map(ideaCard).join('')}
+function updIdeas(){var el=document.getElementById('ideas');if(el)el.innerHTML=ideasInner()}
+function refreshIdeas(){S.ideas.key=ideaKey();S.ideas.loading=true;updIdeas();loadIdeas()}
+async function loadIdeas(){var I=S.ideas,names=[],pool={},ok=0,fail=0;I.err='';
+ S.inv.forEach(function(x){var n=x.n.trim().toLowerCase();if(n&&names.indexOf(n)<0)names.push(n)});names=names.slice(0,6);
+ // recipes that use what you have (most matches first)
+ var qs=[];names.forEach(function(n){var b=norm(n),alt=n!=b?b:(/o$/.test(n)?n+'es':n+'s');qs.push([n,n],[n,alt])}); // search singular and plural
+ await Promise.all(qs.map(function(q){var n=q[0];return mdb('filter.php?i='+encodeURIComponent(q[1].replace(/\s+/g,'_'))).then(function(d){ok++;
+  (d&&d.meals||[]).forEach(function(m){var p=pool[m.idMeal]||(pool[m.idMeal]={id:m.idMeal,n:m.strMeal,thumb:m.strMealThumb,uses:[]});if(p.uses.indexOf(n)<0)p.uses.push(n)})}).catch(function(){fail++})}));
+ var list=Object.keys(pool).map(function(k){return pool[k]}).sort(function(a,b){return b.uses.length-a.uses.length||Math.random()-.5}).slice(0,6);
+ // top up with random recipes
+ if(list.length<6){var rs=await Promise.all([0,1,2,3,4,5,6,7].slice(0,8-list.length).map(function(){return mdb('random.php').then(function(d){ok++;return d&&d.meals&&d.meals[0]}).catch(function(){fail++;return null})}));
+  rs.forEach(function(m){if(!m||list.length>=6||list.some(function(x){return x.id==m.idMeal}))return;I.detail[m.idMeal]=mealDetail(m);list.push({id:m.idMeal,n:m.strMeal,thumb:m.strMealThumb,uses:[]})})}
+ I.list=list;I.loading=false;
+ if(!ok&&fail)I.err='Couldn’t load recipe ideas right now. Check your internet connection.';
+ updIdeas()}
+// turn "1 1/2 cups" / "200g" / "3" into units the app understands (used by "I made this")
+var MUNITS={g:'g',gram:'g',grams:'g',kg:'kg',oz:'oz',ounce:'oz',ounces:'oz',lb:'lb',lbs:'lb',pound:'lb',pounds:'lb',ml:'ml',l:'liter',litre:'liter',litres:'liter',liter:'liter',liters:'liter',cup:'cup',cups:'cup',tbsp:'tbsp',tbs:'tbsp',tblsp:'tbsp',tablespoon:'tbsp',tablespoons:'tbsp',tsp:'tsp',teaspoon:'tsp',teaspoons:'tsp',pint:'pint',pints:'pint',quart:'quart',quarts:'quart',gallon:'gallon',gallons:'gallon','fl oz':'fl oz'};
+function frac(t){return t.split(/\s+/).reduce(function(s,p){var f=p.split('/');return s+(f.length==2?(+f[0]/+f[1]):+p)},0)}
+function parseIng(n,m){var g={n:n,u:'individual',a:null,q:null,m:m},x=m.toLowerCase().match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)\s*(.*)$/);
+ if(!x)return g;var val=frac(x[1]),rest=x[2].trim(),u=MUNITS[rest]||MUNITS[rest.split(' ')[0]];
+ if(!(val>0))return g;
+ if(u){g.u=u;g.a=val;g.q=1}else if(!rest||/^(large|medium|small|whole)$/.test(rest)){g.q=val}
+ return g}
+function mealDetail(m){var ing=[];for(var i=1;i<=20;i++){var n=(m['strIngredient'+i]||'').trim();if(n)ing.push(parseIng(n,(m['strMeasure'+i]||'').trim()))}
+ var st=(m.strInstructions||'').replace(/\r/g,'').split(/\n+/).map(function(l){return l.trim().replace(/^(step\s*)?\d+[.):]?\s+/i,'')}).filter(function(l){return l&&!/^step\s*\d*$/i.test(l)});
+ if(st.length<=1&&st[0])st=st[0].split(/(?<=\.)\s+/);
+ var src=m.strSource||m.strYoutube||'';if(!/^https?:\/\//.test(src))src='';
+ return {id:m.idMeal,n:m.strMeal,t:'',ing:ing,st:st,src:src}}
+function ideaCard(c){var d=S.ideas.detail[c.id],uses=c.uses.length?c.uses:(d?d.ing.filter(has).map(function(g){return g.n.toLowerCase()}):[]);
+ return '<details class="idea" data-id="'+esc(c.id)+'" ontoggle="ideaOpen(this)"><summary><span class="ideahead">'+(c.thumb&&/^https:/.test(c.thumb)?'<img src="'+esc(c.thumb)+'/small" alt="" loading="lazy">':'')+'<span>'+esc(c.n)+(uses.length?'<br><span class="meta">Uses your '+esc(uses.join(', '))+'</span>':'')+'</span></span></summary><div class="ideabody">'+(d?ideaBody(d):'')+'</div></details>'}
+function ideaOpen(el){if(!el.open)return;var id=el.dataset.id,body=el.querySelector('.ideabody');
+ if(S.ideas.detail[id]){body.innerHTML=ideaBody(S.ideas.detail[id]);return}
+ body.innerHTML='<p class="meta">Loading recipe…</p>';
+ mdb('lookup.php?i='+encodeURIComponent(id)).then(function(d){var m=d&&d.meals&&d.meals[0];if(!m)throw 0;S.ideas.detail[id]=mealDetail(m);body.innerHTML=ideaBody(S.ideas.detail[id])})
+  .catch(function(){body.innerHTML='<p class="meta">Couldn’t load this recipe. Try again later.</p>'})}
+function ideaBody(d){var miss=d.ing.filter(function(g){return !has(g)}).length,saved=S.mine.some(function(r){return r.n.toLowerCase()==d.n.toLowerCase()});
+ return '<b>Ingredients</b>'+ingList(d.ing)+'<b>Steps</b><ol>'+d.st.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol>'+
+ (d.src?'<p class="meta"><a href="'+esc(d.src)+'" target="_blank" rel="noopener">View original recipe ↗</a></p>':'')+cookBtn('w',+d.id)+
+ '<div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:4px 16px">'+(saved?'<span class="meta">Saved to your recipes ✓</span>':'<button class="mini" style="padding:0" onclick="saveIdea(\''+esc(d.id)+'\',this)">Save to my recipes</button>')+
+ (miss?'<button class="mini" style="padding:0" onclick="addMissingIdea(\''+esc(d.id)+'\')">Add missing to grocery list</button>':'')+'</div>'}
+async function saveIdea(id,btn){var d=S.ideas.detail[id];if(!d)return;
+ if(S.mine.some(function(r){return r.n.toLowerCase()==d.n.toLowerCase()}))return toast('That recipe is already saved.');
+ var rec={n:d.n,t:'',ing:d.ing,st:d.st,notes:''};
+ if(sb){var r=await sb.from('saved_recipes').insert({user_id:S.uid,recipe_name:d.n,cook_time:null,ingredients:d.ing,steps:d.st}).select().single();
+  if(r.error)return toast(r.error.code=='23505'?'That recipe is already saved.':'Could not save: '+r.error.message);rec=rowMine(r.data)}
+ S.mine.unshift(rec);btn.outerHTML='<span class="meta">Saved to your recipes ✓</span>';toast('Saved to your recipes.',1)}
+async function addMissingIdea(id){var d=S.ideas.detail[id];if(!d)return;
+ try{var m=d.ing.filter(function(g){return !has(g)});for(var i=0;i<m.length;i++)await addG(m[i].n)}catch(e){return fail(e)}
+ toast('Added to your grocery list.',1)}
 function openForm(id){var x=S.inv.filter(function(i){return i.id==id})[0]||{n:'',q:'',e:'',d:''};
  var m=document.createElement('div');m.className='modal';m.id='modal';
  var ne=!!id&&!x.e; // NEW: editing an item that has no expiration date
@@ -620,7 +687,9 @@ async function saveItem(id){var n=v('in'),e=v('ie'),d=v('id'),ne=document.getEle
  else S.inv.push({id:S.nid++,n:n,q:+q,u:un.u,a:un.a,e:e,d:d,i:icon(n)});
  closeM();S.sel=null;render()}
  
-function has(n){if(n&&typeof n=='object')n=n.n;return S.inv.some(function(x){return x.n.toLowerCase()==n.toLowerCase()})}
+// CHANGED: match singular/plural (egg = eggs, tomato = tomatoes)
+function norm(n){n=String(n||'').toLowerCase().trim();if(/oes$/.test(n))return n.slice(0,-2);if(/[^s]s$/.test(n))return n.slice(0,-1);return n}
+function has(n){if(n&&typeof n=='object')n=n.n;n=norm(n);return S.inv.some(function(x){return norm(x.n)==n})}
 function ingList(ing){return '<ul>'+ing.map(function(g){g=ingObj(g);return '<li class="'+(has(g)?'have':'miss')+'">'+ingText(g)+(has(g)?' (in inventory)':' (need to buy)')+'</li>'}).join('')+'</ul>'}
 function savedH(){
  var l=S.saved,m=S.mine;
@@ -691,9 +760,13 @@ async function unsave(i){
  S.saved=S.saved.filter(function(x){return x!=i});render()}
 function sugH(){
  var h='<div style="margin-bottom:10px"><button class="mini" type="button" onclick="go(\'app\',\'saved\')">← Back to saved recipes</button></div><div class="between"><h1>Suggested Recipes</h1><span class="pill sug">Suggested</span></div><p class="sub">Ideas based on what is in your inventory.</p>';
- if(!S.inv.length)return h+'<div class="note" style="border-color:var(--bad)">Add food items to see recipe ideas.</div><button class="btn acc" onclick="go(\'app\',\'inv\')">Go to inventory</button>';
+ if(!S.inv.length)return h+'<div class="note">Your inventory is empty, so here are some ideas to get you started. Add food to get suggestions based on what you have.</div><button class="btn ghost" style="width:auto;padding:10px 16px" onclick="go(\'app\',\'inv\')">Go to inventory</button>'+ideasH(true); // CHANGED: show recipe ideas
  R.map(function(r,i){return{r:r,i:i,m:r.ing.filter(function(g){return !has(g)}),h:r.ing.filter(has).length}}).filter(function(o){return o.h>0}).sort(function(a,b){return a.m.length-b.m.length}).forEach(function(o){
  h+='<details><summary><span>'+o.r.n+' <span class="meta">'+o.r.t+'</span></span></summary><p class="meta">'+(o.m.length?'Missing: '+o.m.map(function(g){return esc(ingObj(g).n)}).join(', '):'You have everything.')+'</p><b>Ingredients</b>'+ingList(o.r.ing)+'<b>Steps</b><ol>'+o.r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol>'+cookBtn('b',o.i)+'<div class="row" style="margin-bottom:12px">'+(S.saved.indexOf(o.i)<0?'<button class="mini" onclick="save('+o.i+')">Save recipe</button>':'<span class="meta">Saved</span>')+(o.m.length?'<button class="mini" onclick="addMissing('+o.i+')">Add missing to grocery list</button>':'')+'</div></details>'});
+ // NEW: auto-generated ideas when the inventory is small or few built-in recipes match
+ var nloc=R.filter(function(r){return r.ing.some(has)}).length;
+ if(!nloc)h+='<div class="note">None of the built-in recipes use what you have yet.</div>';
+ if(S.inv.length<5||nloc<2)h+=ideasH(false);
  return h}
 async function save(i){
  if(sb){try{chk(await sb.from('saved_recipes').insert({user_id:S.uid,recipe_name:R[i].n}).select().single())}catch(e){return fail(e)}}
