@@ -697,7 +697,7 @@ function savedH(){
  if(!l.length&&!m.length)h+='<div class="note">No saved recipes yet. Add your own, or save one from the suggestions.</div>';
  // NEW: the user's own recipes, marked "Yours"
  m.forEach(function(r,k){var miss=r.ing.filter(function(g){return !has(g)}).length;
-  h+='<details><summary><span>'+esc(r.n)+(r.t?' <span class="meta">'+esc(r.t)+'</span>':'')+' <span class="pill mine">Yours</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol>'+cookBtn('m',k)+noteH('m',k,r.notes)+'<div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:4px 16px">'+(miss?'<button class="mini" style="white-space:nowrap;padding:0" onclick="addMissingMine('+k+')">Add missing to grocery list</button>':'')+'<button class="mini" style="white-space:nowrap;padding:0" onclick="delMine('+k+')">Delete recipe</button></div></details>'});
+  h+='<details><summary><span>'+esc(r.n)+(r.t?' <span class="meta">'+esc(r.t)+'</span>':'')+' <span class="pill mine">Yours</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol>'+cookBtn('m',k)+noteH('m',k,r.notes)+'<div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:4px 16px">'+(miss?'<button class="mini" style="white-space:nowrap;padding:0" onclick="addMissingMine('+k+')">Add missing to grocery list</button>':'')+'<button class="mini" style="white-space:nowrap;padding:0" onclick="editMine('+k+')">Edit recipe</button><button class="mini" style="white-space:nowrap;padding:0" onclick="delMine('+k+')">Delete recipe</button></div></details>'});
  l.forEach(function(i){var r=R[i];h+='<details><summary><span>'+r.n+' <span class="meta">'+r.t+'</span></span></summary><b>Ingredients</b>'+ingList(r.ing)+'<b>Steps</b><ol>'+r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol>'+cookBtn('b',i)+noteH('b',i,S.bnotes[r.n])+'<button class="mini" style="margin-bottom:12px;padding:0" onclick="unsave('+i+')">Remove from saved</button></details>'});
  return h+'<div class="btnrow"><button class="btn dash" onclick="openRecipeForm()">+ Add your own recipe</button><button class="btn acc" onclick="go(\'app\',\'sug\')">See suggested recipes</button></div>'}
 // NEW: "My notes" on saved recipes (kind 'm' = your own recipe, 'b' = built-in recipe)
@@ -717,21 +717,35 @@ async function saveNote(btn){var b=btn.closest('.notes'),t=b.querySelector('text
   if(r.error){b.querySelector('.err').textContent=/notes/.test(r.error.message||'')?'Notes need a quick database update before they can be saved.':'Could not save notes: '+r.error.message;return}}
  if(kind=='m')S.mine[k].notes=t;else S.bnotes[name]=t;
  b.innerHTML=noteInner(t);toast('Notes saved.',1)}
-// NEW: form for adding your own recipe
-function openRecipeForm(){
- var m=document.createElement('div');m.className='modal';m.id='modal';
- m.innerHTML='<div class="sheet"><h2>Add Your Own Recipe</h2><label for="rn">Recipe name</label><input id="rn" maxlength="60"><label for="rt">Cook time (optional)</label><input id="rt" maxlength="20" placeholder="e.g. 20 min"><label>Ingredients</label><div class="meta">Just type each ingredient. Amounts are optional: tap “+ Add amount” to add one (like 3 eggs or 5 oz).</div><div id="ingrows" style="margin-top:8px"></div><button class="btn ghost" style="margin-top:0;padding:10px" onclick="addIngRow()">+ Add another ingredient</button><label for="rs">Steps (one per line)</label><textarea id="rs" placeholder="Whisk the eggs.&#10;Cook the spinach.&#10;Add eggs and stir."></textarea><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveRecipe()">Save recipe</button></div></div>';
- document.body.appendChild(m);addIngRow();addIngRow();document.getElementById('rn').focus()}
-function addIngRow(){var d=document.createElement('div');d.className='ingrow';
- d.innerHTML='<div class="inhead"><div><label>Ingredient</label><input class="inm" aria-label="Ingredient name" maxlength="40" placeholder="e.g. Spinach"></div><button class="rm" aria-label="Remove ingredient" onclick="this.closest(\'.ingrow\').remove()">&#10005;</button></div><button type="button" class="mini amtlink" aria-expanded="false" onclick="toggleAmt(this)">+ Add amount (optional)</button><div class="amtbox hide">'+unitBox('individual',null,'')+'</div>'; // CHANGED: amount is optional and hidden until asked for
- document.getElementById('ingrows').appendChild(d)}
-// NEW: show/hide the amount fields for one ingredient
+// Add and edit your own recipes with the same form.
+var editingRecipeIndex=null;
+function editMine(k){if(!S.mine[k])return;openRecipeForm(k)}
+function openRecipeForm(editIndex){
+ editingRecipeIndex=editIndex==null?null:editIndex;
+ var current=editingRecipeIndex==null?null:S.mine[editingRecipeIndex];if(editingRecipeIndex!=null&&!current)return;
+ var editing=!!current,m=document.createElement('div');m.className='modal';m.id='modal';
+ m.innerHTML='<div class="sheet"><h2>'+(editing?'Edit Your Recipe':'Add Your Own Recipe')+'</h2><label for="rn">Recipe name</label><input id="rn" maxlength="60"><label for="rt">Cook time (optional)</label><input id="rt" maxlength="20" placeholder="e.g. 20 min"><label>Ingredients</label><div class="meta">Just type each ingredient. Amounts are optional: tap “+ Add amount” to add one (like 3 eggs or 5 oz).</div><div id="ingrows" style="margin-top:8px"></div><button class="btn ghost" style="margin-top:0;padding:10px" onclick="addIngRow()">+ Add another ingredient</button><label for="rs">Steps (one per line)</label><textarea id="rs" placeholder="Whisk the eggs.&#10;Cook the spinach.&#10;Add eggs and stir."></textarea><div class="err" id="e" role="alert"></div><div class="row"><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn acc" onclick="saveRecipe()">'+(editing?'Update recipe':'Save recipe')+'</button></div></div>';
+ document.body.appendChild(m);
+ if(current){
+  document.getElementById('rn').value=current.n||'';document.getElementById('rt').value=current.t||'';
+  (current.ing&&current.ing.length?current.ing:[null]).forEach(function(g){addIngRow(g)});
+  document.getElementById('rs').value=(current.st||[]).join('\n');
+ }else{addIngRow();addIngRow()}
+ document.getElementById('rn').focus()}
+function addIngRow(ingredient){var d=document.createElement('div');d.className='ingrow';
+ d.innerHTML='<div class="inhead"><div><label>Ingredient</label><input class="inm" aria-label="Ingredient name" maxlength="40" placeholder="e.g. Spinach"></div><button class="rm" aria-label="Remove ingredient" onclick="this.closest(\'.ingrow\').remove()">&#10005;</button></div><button type="button" class="mini amtlink" aria-expanded="false" onclick="toggleAmt(this)">+ Add amount (optional)</button><div class="amtbox hide">'+unitBox('individual',null,'')+'</div>';
+ document.getElementById('ingrows').appendChild(d);
+ if(ingredient){var g=ingObj(ingredient);d.querySelector('.inm').value=g.n||'';
+  if(g.m){d.querySelector('.inm').value=g.m+' '+(g.n||'');return}
+  if(g.u&&(!isInd(g.u)||g.q!=null)){var btn=d.querySelector('.amtlink'),box=d.querySelector('.amtbox'),ub=box.querySelector('.unitbox');box.classList.remove('hide');btn.textContent='− Remove amount';btn.setAttribute('aria-expanded','true');
+   var unit=Object.prototype.hasOwnProperty.call(UNITS,g.u)?g.u:'individual';ub.querySelector('.uu').value=unit;uToggle(ub.querySelector('.uu'));ub.querySelector('.ua').value=g.a==null?'':g.a;ub.querySelector('.uq').value=g.q==null?'':g.q;}}
+}
+// Show/hide the amount fields for one ingredient
 function toggleAmt(btn){var box=btn.nextElementSibling,open=box.classList.toggle('hide')===false;
  btn.textContent=open?'− Remove amount':'+ Add amount (optional)';btn.setAttribute('aria-expanded',open);
  if(open)box.querySelector('.uq').focus()}
 function readIngs(){var out=[],rows=document.querySelectorAll('#ingrows .ingrow');
  for(var i=0;i<rows.length;i++){var n=rows[i].querySelector('.inm').value.trim();if(!n)continue;
-  // CHANGED: no amount if the amount fields are hidden or left blank
   var box=rows[i].querySelector('.amtbox'),ub=box.querySelector('.unitbox');
   var blank=!ub.querySelector('.uq').value.trim()&&(isInd(ub.querySelector('.uu').value)||!ub.querySelector('.ua').value.trim());
   if(box.classList.contains('hide')||blank){out.push({n:n,u:'individual',a:null,q:null});continue}
@@ -739,16 +753,19 @@ function readIngs(){var out=[],rows=document.querySelectorAll('#ingrows .ingrow'
   out.push({n:n,u:un.u,a:un.a,q:un.q})}
  return out}
 function lines(id){return document.getElementById(id).value.split('\n').map(function(x){return x.trim()}).filter(Boolean)}
-async function saveRecipe(){var n=v('rn'),t=v('rt'),ing=readIngs(),st=lines('rs');
+async function saveRecipe(){var n=v('rn'),t=v('rt'),ing=readIngs(),st=lines('rs'),editing=editingRecipeIndex!=null,old=editing?S.mine[editingRecipeIndex]:null;
  if(!n)return err('Please enter a recipe name.');
  if(typeof ing=='string')return err(ing);
  if(!ing.length)return err('Please add at least one ingredient.');
  if(!st.length)return err('Please add at least one step.');
- if(S.mine.some(function(r){return r.n.toLowerCase()==n.toLowerCase()}))return err('You already have a recipe with that name.');
- var rec={n:n,t:t,ing:ing,st:st};
- if(sb){try{rec=rowMine(chk(await sb.from('saved_recipes').insert({user_id:S.uid,recipe_name:n,cook_time:t||null,ingredients:ing,steps:st}).select().single()))}
-  catch(e){return err(e.code=='23505'?'You already have a recipe with that name.':/column/i.test(e.message||'')?'The database needs a quick update before custom recipes can be saved (see the setup note).':'Could not save: '+e.message)}}
- S.mine.unshift(rec);closeM();toast('Recipe saved.',1);go('app','saved')}
+ if(S.mine.some(function(r,k){return k!==editingRecipeIndex&&r.n.toLowerCase()==n.toLowerCase()}))return err('You already have a recipe with that name.');
+ var rec={n:n,t:t,ing:ing,st:st,notes:old?old.notes||'':''};
+ if(sb){try{
+  var q=sb.from('saved_recipes').update({recipe_name:n,cook_time:t||null,ingredients:ing,steps:st}).eq('user_id',S.uid).eq('recipe_name',old?old.n:n).not('ingredients','is',null).select().single();
+  rec=rowMine(chk(await q));
+ }catch(e){return err(e.code=='23505'?'You already have a recipe with that name.':/column/i.test(e.message||'')?'The database needs a quick update before custom recipes can be saved (see the setup note).':'Could not save: '+e.message)}}
+ if(editing)S.mine[editingRecipeIndex]=rec;else S.mine.unshift(rec);
+ closeM();editingRecipeIndex=null;toast(editing?'Recipe updated.':'Recipe saved.',1);go('app','saved')}
 async function delMine(k){var r=S.mine[k];if(!r||!confirm('Delete "'+r.n+'"?'))return;
  if(sb){try{chk(await sb.from('saved_recipes').delete().eq('user_id',S.uid).eq('recipe_name',r.n).not('ingredients','is',null))}catch(e){return fail(e)}}
  S.mine.splice(k,1);render()}
