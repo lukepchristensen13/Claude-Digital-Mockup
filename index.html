@@ -322,6 +322,22 @@ details ul,details ol{margin:0 0 10px;padding-left:20px}
 .tablewrap table{width:100%;border-collapse:collapse;font-size:.9rem;min-width:620px}
 .tablewrap th,.tablewrap td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
 .tablewrap th{color:var(--mute);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.03em}
+
+/* NEW: Objectives & KPIs on the admin page */
+.obj{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
+.objhead{font-weight:800;margin:0 0 10px;font-size:1.02rem}
+.objnum{display:inline-block;background:var(--ink);color:var(--bg);border-radius:99px;padding:2px 10px;font-size:.75rem;margin-right:8px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.kpi{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:var(--bg)}
+.kpititle{font-weight:700;font-size:.92rem}
+.kpirow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 6px}
+.kpinum{font-size:2rem;font-weight:800;line-height:1.1}
+.kpist{font-size:.75rem;font-weight:800;border-radius:99px;padding:3px 9px;white-space:nowrap}
+.kpist.ok{background:var(--ok);color:#fff}.kpist.low{background:var(--warn);color:#fff}.kpist.wait{background:var(--line);color:var(--ink)}
+.kbar{position:relative;height:12px;border-radius:99px;background:var(--card);border:1px solid var(--line);margin-bottom:6px}
+.kbar i{display:block;height:100%;border-radius:99px;background:var(--ok)}
+.kbar b{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1px;background:var(--ink);border-radius:2px}
+.kpinote{font-size:.85rem;color:var(--mute);margin:6px 0 0}
  
 </style>
 </head>
@@ -437,6 +453,14 @@ function sha256js(s){var b=new TextEncoder().encode(s),K=[],H=[],i,j,n,c,f,pr;
   for(j=0;j<8;j++)H[j]=(H[j]+a[j])|0}
  return H.map(function(h){return(h>>>0).toString(16).padStart(8,'0')}).join('')}
 function setUser(row){S.uid=row.user_id;S.user=row.username;try{localStorage.setItem('pantry_user',JSON.stringify({id:row.user_id,u:row.username}))}catch(e){}}
+// NEW: KPI tracking. Records logins and food actions in the user_events table (quietly skipped if it isn't set up yet)
+function logEvent(type,itemId){var ev={user_id:S.uid,event_type:type,item_id:itemId||null};
+ if(!sb){(S.events=S.events||[]).push({user_id:1,event_type:type,item_id:itemId||null,created_at:new Date().toISOString()});return}
+ if(!S.uid)return;sb.from('user_events').insert(ev).then(function(){},function(){})}
+// a login counts once per 6 hours, so refreshing the page doesn't inflate it
+function trackLogin(force){var k='pantry_lastlogin_'+(S.uid||'offline'),now=Date.now(),last=0;
+ try{last=+localStorage.getItem(k)||0}catch(e){}
+ if(!force&&now-last<6*36e5)return;try{localStorage.setItem(k,String(now))}catch(e){}logEvent('login')}
 async function loadAll(){
  var res=await Promise.all([
   sb.from('inventory_items').select('*').eq('user_id',S.uid).eq('is_used_up',false),
@@ -510,7 +534,7 @@ async function doCreate(){var su=S.su;
   // if the setup SQL hasn't been run yet, create the account without the new alert columns
   if(r.error&&/notify_days|in_app_alerts|notification_preference/.test(r.error.message||'')){delete row.notify_days;delete row.in_app_alerts;delete row.notification_preference;r=await sb.from('users').insert(row).select('user_id,username').single()}
   if(r.error)return err(r.error.code=='23505'?'That username or email is already taken.':'Could not create account: '+r.error.message);
-  S.profile=prof;S.su={step:1,notification_preference:'email',notify_days:[7,3,1]};setUser(r.data);await loadAll();go('app','inv');toast('Account created. Welcome to Pantry!',1)
+  S.profile=prof;S.su={step:1,notification_preference:'email',notify_days:[7,3,1]};setUser(r.data);trackLogin(true);await loadAll();go('app','inv');toast('Account created. Welcome to Pantry!',1)
  }catch(e){fail(e)}}
 function err(m){var e=document.getElementById('e');if(e)e.textContent=m;else toast(m)}
 function loginH(){return '<h1>Welcome Back</h1><p class="sub">Log in to see what is in your kitchen.</p><label for="lu">Username or email</label><input id="lu"><label for="lp">Password</label><input id="lp" type="password"><div class="err" id="e" role="alert"></div><button class="btn acc" onclick="doLogin()">Log in</button>'+
@@ -520,12 +544,13 @@ async function doLogin(){var u=v('lu'),p=v('lp');
  if(!sb){var ok=(u=='demo'&&p=='Demo-Pass-1234!')||(S.user&&(u==S.user||u==S.email)&&p==S.pass);
   if(!ok)return err('Username or password is incorrect. Try again.');
   if(u=='demo'){S.user='demo';S.profile.is_admin=true} // NEW: offline demo account can see the admin portal
+  trackLogin(true); // NEW: KPI
   go('app','inv');return alertPopup()}
  try{
   var r=await sb.from('users').select('user_id,username,password_hash').eq(u.indexOf('@')>-1?'email':'username',u).maybeSingle();
   if(r.error)throw r.error;
   if(!r.data||r.data.password_hash!==await sha(p))return err('Username or password is incorrect. Try again.');
-  setUser(r.data);await loadAll();go('app','inv');alertPopup() // NEW: popup if food is expiring
+  setUser(r.data);trackLogin(true);await loadAll();go('app','inv');alertPopup() // NEW: popup if food is expiring; trackLogin = KPI
  }catch(e){fail(e)}}
 function forgotH(){return '<h1>Reset Password</h1><p class="sub">Enter the email linked to your account.</p><label for="fe">Email address</label><input id="fe" type="email"><div class="err" id="e" role="alert"></div><div id="ok"></div><button class="btn acc" onclick="doForgot()">Send recovery link</button><button class="link" style="margin-top:14px" onclick="go(\'login\')">Back to log in</button>'}
 function doForgot(){if(!/^\S+@\S+\.\S+$/.test(v('fe')))return err('Please enter a valid email address.');err('');document.getElementById('ok').innerHTML='<div class="note">Check your email for a password recovery link.</div>'}
@@ -544,11 +569,17 @@ function invH(){
 function pick(id){S.sel=S.sel==id?null:id;render()}
 async function delItem(id){if(!confirm('Delete this item?'))return;
  if(sb){try{chk(await sb.from('inventory_items').delete().eq('item_id',id))}catch(e){return fail(e)}}
+ logEvent('delete_item'); // NEW: KPI
  S.inv=S.inv.filter(function(x){return x.id!=id});S.sel=null;render()}
+// NEW: mark used with the time (KPI: used before it expires). Works even if the used_at column isn't set up yet.
+async function markUsedDb(id){var r=await sb.from('inventory_items').update({is_used_up:true,used_at:new Date().toISOString()}).eq('item_id',id);
+ if(r.error&&/used_at/.test(r.error.message||''))r=await sb.from('inventory_items').update({is_used_up:true}).eq('item_id',id);
+ return r}
 // NEW: mark an item as used up (hides it from inventory; kept in the database with is_used_up = true)
 async function useItem(id){
  var x=S.inv.filter(function(i){return i.id==id})[0];if(!x)return;
- if(sb){try{chk(await sb.from('inventory_items').update({is_used_up:true}).eq('item_id',id))}catch(e){fail(e);return render()}}
+ if(sb){try{chk(await markUsedDb(id))}catch(e){fail(e);return render()}} // CHANGED: also saves when it was used
+ x.ua=new Date().toISOString();logEvent('use_item',id); // NEW: KPI
  S.inv=S.inv.filter(function(i){return i.id!=id});
  S.used.push(x); // NEW: keep used item so it shows in grocery suggestions
  if(S.sel==id)S.sel=null;
@@ -610,10 +641,11 @@ async function applyCook(){var rows=S.cook.rows,todo=[];
  if(!todo.length){closeM();return toast('No changes made.',1)}
  var btn=document.getElementById('cookgo');btn.disabled=true;
  for(var i=0;i<todo.length;i++){var x=todo[i].x,a=todo[i].a;
-  if(sb){var r=a.gone?await sb.from('inventory_items').update({is_used_up:true}).eq('item_id',x.id)
+  if(sb){var r=a.gone?await markUsedDb(x.id) /* CHANGED: also saves when it was used */
                      :await sb.from('inventory_items').update({quantity:a.q,unit_amount:isInd(x.u)?null:a.a}).eq('item_id',x.id);
    if(r.error){btn.disabled=false;return err('Could not update '+x.n+': '+r.error.message)}}
-  if(a.gone){S.inv=S.inv.filter(function(y){return y.id!=x.id});S.used.push(x)}else{x.q=a.q;if(!isInd(x.u))x.a=a.a}}
+  if(a.gone){x.ua=new Date().toISOString();S.inv=S.inv.filter(function(y){return y.id!=x.id});S.used.push(x)}else{x.q=a.q;if(!isInd(x.u))x.a=a.a}}
+ logEvent('cook_recipe'); // NEW: KPI
  var used=todo.filter(function(t){return t.a.gone}).length;
  closeM();render();toast('Inventory updated'+(used?' ('+used+' used up)':'')+'.',1)}
 // ===== NEW: auto-generated recipe ideas from TheMealDB (free recipe database, test key "1") =====
@@ -747,6 +779,7 @@ async function saveItem(id){var n=v('in'),e=v('ie'),d=v('id'),ne=document.getEle
   }catch(er){return err('Could not save: '+er.message)}
  }else if(id){var x=S.inv.filter(function(i){return i.id==id})[0];x.n=n;x.q=+q;x.u=un.u;x.a=un.a;x.e=e;x.d=d;x.i=icon(n)}
  else S.inv.push({id:S.nid++,n:n,q:+q,u:un.u,a:un.a,e:e,d:d,i:icon(n)});
+ logEvent(id?'edit_item':'add_item',id||null); // NEW: KPI
  closeM();S.sel=null;render()}
  
 // CHANGED: match singular/plural (egg = eggs, tomato = tomatoes)
@@ -833,6 +866,7 @@ async function saveRecipe(){var n=v('rn'),t=v('rt'),ing=readIngs(),st=lines('rs'
    if(result.error)throw result.error;
   }
  }catch(e){return err(e.code=='23505'?'You already have a recipe with that name.':/column/i.test(e.message||'')?'The database needs a quick update before custom recipes can be saved (see the setup note).':'Could not save: '+e.message)}}
+ logEvent('add_recipe'); // NEW: KPI
  if(editing)S.mine[editingRecipeIndex]=rec;else S.mine.unshift(rec);
  closeM();editingRecipeIndex=null;toast(editing?'Recipe updated.':'Recipe saved.',1);go('app','saved')}
 async function delMine(k){var r=S.mine[k];if(!r||!confirm('Delete "'+r.n+'"?'))return;
@@ -856,14 +890,15 @@ function sugH(){
  return h}
 async function save(i){
  if(sb){try{chk(await sb.from('saved_recipes').insert({user_id:S.uid,recipe_name:R[i].n}))}catch(e){return fail(e)}}
- S.saved.push(i);toast('Recipe saved.',1);render()}
+ S.saved.push(i);logEvent('save_recipe');toast('Recipe saved.',1);render()} // CHANGED: logEvent = KPI
 async function addMissing(i){
  try{var m=R[i].ing.filter(function(g){return !has(g)});for(var k=0;k<m.length;k++)await addG(ingObj(m[k]).n)}catch(e){return fail(e)}
  toast('Added to your grocery list.',1)}
 async function addG(n,src){
  if(S.groc.some(function(x){return x.n.toLowerCase()==n.toLowerCase()}))return;
  if(sb)S.groc.push(rowG(chk(await sb.from('grocery_list_items').insert({user_id:S.uid,item_name:n,source_item_id:src||null}).select().single())));
- else S.groc.push({id:S.nid++,n:n,done:false})}
+ else S.groc.push({id:S.nid++,n:n,done:false});
+ logEvent('add_grocery',src||null)} // NEW: KPI
  
 var grocerySuggestionIndex=-1;
 function showGrocerySuggestions(){var input=document.getElementById('gi'),box=document.getElementById('giSuggestions');if(!input||!box)return;
@@ -939,6 +974,7 @@ async function markRead(key){
   if(sb){var r=await sb.from('notifications').update({is_read:true}).eq('notification_id',id);if(r.error)return fail(r.error)}
   n.is_read=true}
  else{var rs=readSet();if(rs.indexOf(key)<0){rs.push(key);saveReadSet(rs)}}
+ logEvent('read_alert'); // NEW: tracked, but not counted as a KPI "action"
  render()}
 async function markAllRead(){var l=allAlerts().filter(function(a){return !a.read});for(var i=0;i<l.length;i++)await markRead(l[i].key);toast('All alerts marked as read.',1)}
 function alertsH(){var l=allAlerts(),ds=alertDays();
@@ -978,13 +1014,64 @@ async function saveNotif(){var n=readNotif(),p=S.profile||{},msg='Notification s
 function isAdmin(){return !!(S.profile||{}).is_admin}
 async function loadAdmin(){S.admin={loading:true};var d;
  if(sb){var q=function(t,c){return sb.from(t).select(c).limit(5000).then(function(r){return r.error?null:r.data})};
-  var res=await Promise.all([q('users','*'),q('inventory_items','item_id,user_id,item_name,is_used_up,expiration_date'),q('grocery_list_items','grocery_item_id,user_id,is_checked'),q('saved_recipes','user_id,ingredients'),q('notifications','channel,created_at')]);
-  d={users:(res[0]||[]).map(function(u){delete u.password_hash;return u}),items:res[1]||[],groc:res[2]||[],recipes:res[3]||[],notes:res[4]};
+  var since=new Date(Date.now()-30*864e5).toISOString(); // CHANGED: + KPI data (used_at, activity log, who each alert went to)
+  var res=await Promise.all([q('users','*'),q('inventory_items','item_id,user_id,item_name,is_used_up,expiration_date,used_at'),q('grocery_list_items','grocery_item_id,user_id,is_checked'),q('saved_recipes','user_id,ingredients'),q('notifications','user_id,channel,created_at'),
+   sb.from('user_events').select('user_id,event_type,created_at').gte('created_at',since).limit(10000).then(function(r){return r.error?null:r.data})]);
+  var items=res[1],hasUsedAt=!!items;
+  if(!items)items=await q('inventory_items','item_id,user_id,item_name,is_used_up,expiration_date'); // used_at not set up yet
+  d={users:(res[0]||[]).map(function(u){delete u.password_hash;return u}),items:items||[],groc:res[2]||[],recipes:res[3]||[],notes:res[4],events:res[5],hasUsedAt:hasUsedAt};
  }else{ // offline prototype: stats from this browser
   d={users:[Object.assign({user_id:1,username:S.user||'demo',created_at:new Date().toISOString()},S.profile)],
-   items:S.inv.map(function(x){return {user_id:1,item_name:x.n,is_used_up:false,expiration_date:x.e}}).concat(S.used.map(function(x){return {user_id:1,item_name:x.n,is_used_up:true,expiration_date:x.e}})),
-   groc:S.groc.map(function(g){return {user_id:1,is_checked:g.done}}),recipes:S.saved.map(function(){return {user_id:1}}).concat(S.mine.map(function(){return {user_id:1,ingredients:[1]}})),notes:S.notes}}
+   items:S.inv.map(function(x){return {user_id:1,item_name:x.n,is_used_up:false,expiration_date:x.e}}).concat(S.used.map(function(x){return {user_id:1,item_name:x.n,is_used_up:true,expiration_date:x.e,used_at:x.ua||null}})),
+   groc:S.groc.map(function(g){return {user_id:1,is_checked:g.done}}),recipes:S.saved.map(function(){return {user_id:1}}).concat(S.mine.map(function(){return {user_id:1,ingredients:[1]}})),
+   notes:S.notes.map(function(n){return Object.assign({user_id:1},n)}),events:S.events||[],hasUsedAt:true}}
  S.admin=d;if(S.tab=='admin')render()}
+// =====================================================================
+// NEW: OBJECTIVES & KPIs (Admin Portal)
+// =====================================================================
+var KPI_ACTIONS=['add_item','edit_item','use_item','delete_item','cook_recipe','add_grocery','save_recipe','add_recipe'];
+function pct(a,b){return b?Math.round(a*100/b):null}
+function kpiData(d){var U=d.users,nU=U.length,now=Date.now(),out={};
+ // KPI 1: % of users who logged at least 5 food items (all items they ever added, used or not)
+ var per={};d.items.forEach(function(i){per[i.user_id]=(per[i.user_id]||0)+1});
+ var k1=U.filter(function(u){return (per[u.user_id]||0)>=5}).length;
+ out.k1={val:pct(k1,nU),target:50,detail:k1+' of '+nU+' users have logged 5 or more food items.'};
+ // KPI 2: % of users who logged in 3+ times in the last 7 days
+ if(d.events){var wk=now-7*864e5,lc={};
+  d.events.forEach(function(e){if(e.event_type=='login'&&Date.parse(e.created_at)>=wk)lc[e.user_id]=(lc[e.user_id]||0)+1});
+  var k2=U.filter(function(u){return (lc[u.user_id]||0)>=3}).length;
+  out.k2={val:pct(k2,nU),target:70,detail:k2+' of '+nU+' users logged in 3 or more times in the last 7 days.'}}
+ else out.k2={missing:1,target:70};
+ // KPI 3: % of finished items that were marked used on or before their expiration date
+ if(d.hasUsedAt){var ok=0,late=0,wasted=0,unk=0;
+  d.items.forEach(function(i){
+   if(i.is_used_up){if(!i.used_at){unk++;return}if(!i.expiration_date||i.used_at.slice(0,10)<=i.expiration_date)ok++;else late++}
+   else if(i.expiration_date&&days(i.expiration_date)<0)wasted++});
+  var den=ok+late+wasted;
+  out.k3={val:pct(ok,den),target:60,detail:ok+' of '+den+' finished items were used before expiring ('+late+' used late, '+wasted+' expired unused).'+(unk?' '+unk+' items used before tracking started aren\'t counted.':'')}}
+ else out.k3={missing:1,target:60};
+ // KPI 4: % of alerts followed by a food action from that user within 24 hours
+ if(d.events&&d.notes){var acted=0,done=0,waiting=0,day=864e5;
+  d.notes.forEach(function(n){if(n.user_id==null)return;var t=Date.parse(n.created_at);
+   var hit=d.events.some(function(e){var et=Date.parse(e.created_at);return e.user_id==n.user_id&&KPI_ACTIONS.indexOf(e.event_type)>-1&&et>=t&&et<=t+day});
+   if(hit){acted++;done++}else if(now-t<day)waiting++;else done++});
+  out.k4={val:pct(acted,done),target:40,detail:acted+' of '+done+' alerts led to an action within 24 hours.'+(waiting?' '+waiting+' newer alerts are still inside their 24-hour window.':'')}}
+ else out.k4={missing:1,target:40};
+ return out}
+function kpiCard(title,k){
+ if(k.missing)return '<div class="kpi"><div class="kpititle">'+title+'</div><div class="kpinum">–</div><div class="meta">Target: '+k.target+'%</div><p class="kpinote">Needs the KPI database update (<code>setup-kpis.sql</code>) to start tracking.</p></div>';
+ var v=k.val,st=v==null?['wait','No data yet']:v>=k.target?['ok','✓ On track']:['low','Below target'];
+ return '<div class="kpi"><div class="kpititle">'+title+'</div><div class="kpirow"><div class="kpinum">'+(v==null?'–':v+'%')+'</div><span class="kpist '+st[0]+'">'+st[1]+'</span></div>'+
+  '<div class="kbar" role="img" aria-label="'+(v==null?'No data':v+' percent')+', target '+k.target+' percent"><i style="width:'+(v||0)+'%"></i><b style="left:'+k.target+'%"></b></div>'+
+  '<div class="meta">Target: '+k.target+'%</div><p class="kpinote">'+esc(k.detail)+'</p></div>'}
+function kpiH(d){var k=kpiData(d);
+ return '<h2 style="margin:4px 0 10px">Objectives &amp; KPIs</h2>'+
+  '<section class="obj"><div class="objhead"><span class="objnum">Objective 1</span>Users actually add and update food inventory.</div><div class="kpis">'+
+   kpiCard('Users who log at least 5 food items',k.k1)+kpiCard('Users who log in at least 3 times a week',k.k2)+'</div></section>'+
+  '<section class="obj"><div class="objhead"><span class="objnum">Objective 2</span>Users use food before it expires.</div><div class="kpis">'+
+   kpiCard('Food items marked used before they expire',k.k3)+kpiCard('Alerts that lead to an action within 24 hours',k.k4)+'</div></section>'+
+  '<p class="meta" style="margin:-4px 0 22px;max-width:850px">An "action" means adding, editing, using or deleting a food item, cooking a recipe, adding to the grocery list, or saving a recipe. Logins and activity are tracked from when the KPI update was added.</p>'}
+
 function adminH(){
  if(!isAdmin())return '<h1>Admin Portal</h1><div class="note" style="border-color:var(--bad);max-width:850px">You don\'t have access to this page. Ask a Pantry admin to give your account admin access.</div>';
  if(!S.admin){S.admin={loading:true};setTimeout(loadAdmin,0);return '<h1>Admin Portal</h1><p class="sub">Loading user statistics…</p>'}
@@ -996,7 +1083,7 @@ function adminH(){
  var newU=d.users.filter(function(u){return u.created_at&&u.created_at>=week}).length;
  var custom=d.recipes.filter(function(r){return r.ingredients}).length;
  var stat=function(n,l){return '<div class="stat"><b>'+n+'</b><span>'+l+'</span></div>'};
- var h='<div class="between" style="flex-wrap:wrap;gap:8px"><h1>Admin Portal</h1><button class="mini" onclick="S.admin=null;render()">↻ Refresh</button></div><p class="sub">Pantry user statistics.</p>';
+ var h='<div class="between" style="flex-wrap:wrap;gap:8px"><h1>Admin Portal</h1><button class="mini" onclick="S.admin=null;render()">↻ Refresh</button></div><p class="sub">Pantry user statistics, objectives and KPIs.</p>'+kpiH(d)+'<h2 style="margin:0 0 10px">Overall Stats</h2>'; // CHANGED: KPIs at the top
  h+='<div class="stats">'+stat(U,'Total users')+stat(d.users.some(function(u){return u.created_at})?newU:'–','New users (last 7 days)')+stat(active.length,'Food items being tracked')+stat(used,'Items marked as used')+
   stat(exp7,'Expiring in the next 7 days')+stat(expired,'Expired, not used')+stat(d.groc.length,'Grocery list items')+stat(d.recipes.length,'Saved recipes ('+custom+' custom)')+stat(d.notes?d.notes.length:'–','AI alerts sent')+'</div>';
  // notification preference breakdown
@@ -1049,7 +1136,8 @@ function tabsH(){var t=S.tab;
 (async function start(){
  if(sb){var s=null;try{s=JSON.parse(localStorage.getItem('pantry_user'))}catch(e){}
   if(s&&s.id){S.uid=s.id;S.user=s.u;S.screen='app';S.tab='inv';S.inv=[];S.groc=[];S.saved=[];S.mine=[];S.bnotes={};S.used=[];
-   try{await loadAll()}catch(e){fail(e)}}
+   try{await loadAll()}catch(e){fail(e)}
+   trackLogin(false)} // NEW: KPI. A returning visit counts as a login (at most once per 6 hours)
  }else{try{var p=JSON.parse(localStorage.getItem('pantry_profile_offline')||'null');if(p){S.profile=p;S.user=p.username;S.email=p.email;S.screen='app'}}catch(e){}}
  if(location.hash){if(!readHashRoute())location.hash=routeForState()}else location.hash=routeForState();
  render()})();
