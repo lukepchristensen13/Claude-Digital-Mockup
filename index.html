@@ -52,6 +52,17 @@ select{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px
 .cookrow{border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
 .cookrow select{margin-top:8px}.ccust{display:flex;gap:8px;align-items:center;margin-top:8px}.ccust input{flex:1}
 .cafter{margin-top:6px;font-weight:600}.cafter.gone{color:var(--warn)}
+.aicard{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--card);border:1.5px solid var(--ok);border-radius:14px;padding:12px 14px;margin:0 0 16px;max-width:850px} /* NEW: Pantry Chef AI */
+.aicard .btn{width:auto;margin:0;padding:10px 16px}
+.chatlog{max-height:52vh;overflow-y:auto;margin:10px 0;padding-right:2px}
+.msg{padding:10px 12px;border-radius:14px;margin:8px 0;max-width:90%;overflow-wrap:anywhere}
+.msg.me{background:var(--ink);color:var(--bg);margin-left:auto;white-space:pre-wrap}
+.msg.ai{background:var(--bg)}.msg.ai p{margin:0 0 8px}.msg.ai p:last-child{margin:0}.msg.ai ul,.msg.ai ol{margin:4px 0 8px;padding-left:20px}
+.msg.ai h4{margin:6px 0 4px;font-size:1rem}.msg.wait{color:var(--mute);font-style:italic}
+.qchips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}
+.qchip{border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:7px 12px;font:inherit;font-size:.85rem;font-weight:600;cursor:pointer}
+.chatin{display:flex;gap:8px;align-items:flex-end}.chatin textarea{flex:1;min-height:46px;max-height:140px;padding:11px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;resize:vertical}
+.chatin .btn{width:auto;margin:0;padding:12px 16px}
 .ideasec{margin-top:22px} /* NEW: auto-generated recipe ideas */
 .ideasec h2{margin:0}.ideasec .between{flex-wrap:wrap;gap:2px 12px;align-items:baseline}
 .ideahead .meta{font-weight:400}
@@ -328,7 +339,7 @@ if(USE_SUPABASE){
 var S={screen:'create',tab:'inv',sel:null,user:null,uid:null,
 inv:[{id:1,n:'Spinach',q:1,u:'oz',a:5,d:'Bagged',e:off(1),i:'🥬'},{id:2,n:'Eggs',q:6,u:'individual',d:'',e:off(6),i:'🥚'},{id:3,n:'Milk',q:1,u:'gallon',a:0.5,d:'',e:off(3),i:'🥛'},{id:4,n:'Rice',q:2,u:'lb',a:2,d:'',e:off(200),i:'🍚'},{id:5,n:'Tomatoes',q:4,u:'individual',d:'',e:off(9),i:'🍅'}],
 groc:[{id:1,n:'Bread',done:false},{id:2,n:'Butter',done:true}],
-saved:[0],mine:[],bnotes:{},ideas:{key:null,list:[],detail:{},loading:false,err:''},used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none',notify_days:[7,3,1],in_app_alerts:true,is_admin:false},nid:10,gopen:false,
+saved:[0],mine:[],bnotes:{},chat:[],ideas:{key:null,list:[],detail:{},loading:false,err:''},used:[],profile:{first_name:'',last_name:'',email:'',phone_number:'',bio:'',notification_preference:'none',notify_days:[7,3,1],in_app_alerts:true,is_admin:false},nid:10,gopen:false,
 notes:[],su:{step:1,notification_preference:'email',notify_days:[7,3,1]},admin:null}; // NEW: notes = alerts, su = sign-up steps, admin = admin stats
 var MAXQ=99; // NEW: max quantity for an item
 // NEW: unit types. [singular, plural]
@@ -609,6 +620,48 @@ function ideasInner(){var I=S.ideas;
  return I.list.map(ideaCard).join('')}
 function updIdeas(){var el=document.getElementById('ideas');if(el)el.innerHTML=ideasInner()}
 function refreshIdeas(){S.ideas.key=ideaKey();S.ideas.loading=true;updIdeas();loadIdeas()}
+// ===== NEW: Pantry Chef – AI recipe chat =====
+// The AI key is NOT stored here. The chat calls a Supabase Edge Function ("recipe-chat") that keeps the key secret.
+var AI_FUNCTION='recipe-chat';
+function chatCard(){return '<div class="aicard"><div><b>🤖 Pantry Chef</b><div class="meta">Chat with an AI chef for recipe ideas using what’s in your kitchen.</div></div><button class="btn acc" onclick="openChat()">Ask for ideas</button></div>'}
+function invForAI(){return S.inv.map(function(x){var d=x.e?days(x.e):null;return x.n+' ('+amt(x)+(d==null?'':d<0?', expired':', expires in '+d+' day'+(d==1?'':'s'))+')'})}
+// tiny formatter for the AI's replies: **bold**, bullet and numbered lists, headings
+function mdLite(t){var out='',list=null;
+ function close(){if(list){out+='</'+list+'>';list=null}}
+ esc(t).split(/\n/).forEach(function(l){l=l.trim().replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');var m;
+  if(!l){close();return}
+  if((m=l.match(/^#{1,4}\s+(.*)$/))){close();out+='<h4>'+m[1]+'</h4>'}
+  else if((m=l.match(/^[-*•]\s+(.*)$/))){if(list!='ul'){close();out+='<ul>';list='ul'}out+='<li>'+m[1]+'</li>'}
+  else if((m=l.match(/^\d+[.)]\s+(.*)$/))){if(list!='ol'){close();out+='<ol>';list='ol'}out+='<li>'+m[1]+'</li>'}
+  else{close();out+='<p>'+l+'</p>'}});
+ close();return out}
+var QUICK=['What can I make tonight?','Use what’s expiring soon','Quick breakfast idea','A cheap meal for 2'];
+function openChat(){
+ var m=document.createElement('div');m.className='modal';m.id='modal';
+ m.innerHTML='<div class="sheet"><div class="between"><h2>🤖 Pantry Chef</h2><button class="mini" onclick="closeM()">Close</button></div><p class="meta" style="margin:0">Ask for recipe ideas. Pantry Chef can see the food in your inventory.</p><div class="chatlog" id="chatlog" aria-live="polite"></div><div class="qchips" id="qchips">'+QUICK.map(function(q){return '<button class="qchip" onclick="sendChat(this.textContent)">'+esc(q)+'</button>'}).join('')+'</div><div class="chatin"><textarea id="chatbox" maxlength="1000" placeholder="e.g. What can I make with eggs and rice?" aria-label="Message Pantry Chef" onkeydown="if(event.key==\'Enter\'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea><button class="btn acc" id="chatsend" onclick="sendChat()">Send</button></div></div>';
+ document.body.appendChild(m);drawChat();document.getElementById('chatbox').focus()}
+function drawChat(wait){var el=document.getElementById('chatlog');if(!el)return;
+ var h=S.chat.length?'':'<div class="msg ai"><p>Hi! I’m Pantry Chef. Tell me what you’re in the mood for, or tap an idea below, and I’ll suggest recipes using what you have'+(S.inv.length?' ('+S.inv.length+' item'+(S.inv.length==1?'':'s')+' in your inventory).':'. Your inventory is empty right now, so I’ll suggest easy recipes to shop for.')+'</p></div>';
+ S.chat.forEach(function(m){h+=m.role=='user'?'<div class="msg me">'+esc(m.content)+'</div>':'<div class="msg ai">'+mdLite(m.content)+'</div>'});
+ if(wait)h+='<div class="msg ai wait">Pantry Chef is thinking…</div>';
+ el.innerHTML=h;el.scrollTop=el.scrollHeight;
+ var qc=document.getElementById('qchips');if(qc)qc.classList.toggle('hide',S.chat.length>0)}
+async function sendChat(text){var box=document.getElementById('chatbox'),btn=document.getElementById('chatsend');
+ text=(text||box.value).trim();if(!text||btn.disabled)return;box.value='';
+ S.chat.push({role:'user',content:text.slice(0,1000)});btn.disabled=true;drawChat(true);
+ var reply=null;
+ if(sb){try{var r=await sb.functions.invoke(AI_FUNCTION,{body:{messages:S.chat.slice(-10),inventory:invForAI()}});
+   if(!r.error&&r.data&&r.data.reply)reply=r.data.reply;else console.warn('Pantry Chef AI unavailable',r.error||r.data)}catch(e){console.warn(e)}}
+ if(!reply)reply=await chatFallback();
+ S.chat.push({role:'assistant',content:reply});btn.disabled=false;drawChat();
+ var b=document.getElementById('chatbox');if(b)b.focus()}
+// if the AI isn't set up (or can't be reached), answer with recipes from the free recipe database instead
+async function chatFallback(){var I=S.ideas;
+ if(I.key!==ideaKey()||!I.list.length){I.key=ideaKey();I.loading=true;try{await loadIdeas()}catch(e){I.loading=false}}
+ if(!I.list.length)return 'Sorry, I couldn’t reach the recipe service right now. Please try again in a minute.';
+ return 'The AI chef isn’t connected yet, so here are recipe ideas from TheMealDB'+(S.inv.length?' that use what you have':'')+':\n'+
+  I.list.map(function(c){return '- **'+c.n+'**'+(c.uses.length?' (uses your '+c.uses.join(', ')+')':'')}).join('\n')+
+  '\nOpen **Suggested Recipes** to see ingredients and steps for these.'}
 async function loadIdeas(){var I=S.ideas,names=[],pool={},ok=0,fail=0;I.err='';
  S.inv.forEach(function(x){var n=x.n.trim().toLowerCase();if(n&&names.indexOf(n)<0)names.push(n)});names=names.slice(0,6);
  // recipes that use what you have (most matches first)
@@ -693,7 +746,7 @@ function has(n){if(n&&typeof n=='object')n=n.n;n=norm(n);return S.inv.some(funct
 function ingList(ing){return '<ul>'+ing.map(function(g){g=ingObj(g);return '<li class="'+(has(g)?'have':'miss')+'">'+ingText(g)+(has(g)?' (in inventory)':' (need to buy)')+'</li>'}).join('')+'</ul>'}
 function savedH(){
  var l=S.saved,m=S.mine;
- var h='<div class="between"><h1>Saved Recipes</h1><span class="pill">Saved</span></div><p class="sub">Tap a recipe to see what you need.</p>';
+ var h='<div class="between"><h1>Saved Recipes</h1><span class="pill">Saved</span></div><p class="sub">Tap a recipe to see what you need.</p>'+chatCard()+'';
  if(!l.length&&!m.length)h+='<div class="note">No saved recipes yet. Add your own, or save one from the suggestions.</div>';
  // NEW: the user's own recipes, marked "Yours"
  m.forEach(function(r,k){var miss=r.ing.filter(function(g){return !has(g)}).length;
@@ -783,7 +836,7 @@ async function unsave(i){
  if(sb){try{chk(await sb.from('saved_recipes').delete().eq('user_id',S.uid).eq('recipe_name',R[i].n))}catch(e){return fail(e)}}
  S.saved=S.saved.filter(function(x){return x!=i});render()}
 function sugH(){
- var h='<div style="margin-bottom:10px"><button class="mini" type="button" onclick="go(\'app\',\'saved\')">← Back to saved recipes</button></div><div class="between"><h1>Suggested Recipes</h1><span class="pill sug">Suggested</span></div><p class="sub">Ideas based on what is in your inventory.</p>';
+ var h='<div style="margin-bottom:10px"><button class="mini" type="button" onclick="go(\'app\',\'saved\')">← Back to saved recipes</button></div><div class="between"><h1>Suggested Recipes</h1><span class="pill sug">Suggested</span></div><p class="sub">Ideas based on what is in your inventory.</p>'+chatCard()+'';
  if(!S.inv.length)return h+'<div class="note">Your inventory is empty, so here are some ideas to get you started. Add food to get suggestions based on what you have.</div><button class="btn ghost" style="width:auto;padding:10px 16px" onclick="go(\'app\',\'inv\')">Go to inventory</button>'+ideasH(true); // CHANGED: show recipe ideas
  R.map(function(r,i){return{r:r,i:i,m:r.ing.filter(function(g){return !has(g)}),h:r.ing.filter(has).length}}).filter(function(o){return o.h>0}).sort(function(a,b){return a.m.length-b.m.length}).forEach(function(o){
  h+='<details><summary><span>'+o.r.n+' <span class="meta">'+o.r.t+'</span></span></summary><p class="meta">'+(o.m.length?'Missing: '+o.m.map(function(g){return esc(ingObj(g).n)}).join(', '):'You have everything.')+'</p><b>Ingredients</b>'+ingList(o.r.ing)+'<b>Steps</b><ol>'+o.r.st.map(function(s){return '<li>'+s+'</li>'}).join('')+'</ol>'+cookBtn('b',o.i)+'<div class="row" style="margin-bottom:12px">'+(S.saved.indexOf(o.i)<0?'<button class="mini" onclick="save('+o.i+')">Save recipe</button>':'<span class="meta">Saved</span>')+(o.m.length?'<button class="mini" onclick="addMissing('+o.i+')">Add missing to grocery list</button>':'')+'</div></details>'});
