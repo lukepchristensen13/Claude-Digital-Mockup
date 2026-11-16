@@ -650,8 +650,8 @@ function ideaBody(d){var miss=d.ing.filter(function(g){return !has(g)}).length,s
 async function saveIdea(id,btn){var d=S.ideas.detail[id];if(!d)return;
  if(S.mine.some(function(r){return r.n.toLowerCase()==d.n.toLowerCase()}))return toast('That recipe is already saved.');
  var rec={n:d.n,t:'',ing:d.ing,st:d.st,notes:''};
- if(sb){var r=await sb.from('saved_recipes').insert({user_id:S.uid,recipe_name:d.n,cook_time:null,ingredients:d.ing,steps:d.st}).select().single();
-  if(r.error)return toast(r.error.code=='23505'?'That recipe is already saved.':'Could not save: '+r.error.message);rec=rowMine(r.data)}
+ if(sb){var r=await sb.from('saved_recipes').insert({user_id:S.uid,recipe_name:d.n,cook_time:null,ingredients:d.ing,steps:d.st});
+  if(r.error)return toast(r.error.code=='23505'?'That recipe is already saved.':'Could not save: '+r.error.message)}
  S.mine.unshift(rec);btn.outerHTML='<span class="meta">Saved to your recipes ✓</span>';toast('Saved to your recipes.',1)}
 async function addMissingIdea(id){var d=S.ideas.detail[id];if(!d)return;
  try{var m=d.ing.filter(function(g){return !has(g)});for(var i=0;i<m.length;i++)await addG(m[i].n)}catch(e){return fail(e)}
@@ -761,8 +761,15 @@ async function saveRecipe(){var n=v('rn'),t=v('rt'),ing=readIngs(),st=lines('rs'
  if(S.mine.some(function(r,k){return k!==editingRecipeIndex&&r.n.toLowerCase()==n.toLowerCase()}))return err('You already have a recipe with that name.');
  var rec={n:n,t:t,ing:ing,st:st,notes:old?old.notes||'':''};
  if(sb){try{
-  var q=sb.from('saved_recipes').update({recipe_name:n,cook_time:t||null,ingredients:ing,steps:st}).eq('user_id',S.uid).eq('recipe_name',old?old.n:n).not('ingredients','is',null).select().single();
-  rec=rowMine(chk(await q));
+  var payload={user_id:S.uid,recipe_name:n,cook_time:t||null,ingredients:ing,steps:st};
+  if(editing){
+   var result=await sb.from('saved_recipes').update({recipe_name:n,cook_time:t||null,ingredients:ing,steps:st},{count:'exact'}).eq('user_id',S.uid).eq('recipe_name',old.n).not('ingredients','is',null);
+   if(result.error)throw result.error;
+   if(result.count===0)return err('Could not update: no matching saved recipe was found for this account. Refresh the page and try again.');
+  }else{
+   var result=await sb.from('saved_recipes').insert(payload);
+   if(result.error)throw result.error;
+  }
  }catch(e){return err(e.code=='23505'?'You already have a recipe with that name.':/column/i.test(e.message||'')?'The database needs a quick update before custom recipes can be saved (see the setup note).':'Could not save: '+e.message)}}
  if(editing)S.mine[editingRecipeIndex]=rec;else S.mine.unshift(rec);
  closeM();editingRecipeIndex=null;toast(editing?'Recipe updated.':'Recipe saved.',1);go('app','saved')}
@@ -786,7 +793,7 @@ function sugH(){
  if(S.inv.length<5||nloc<2)h+=ideasH(false);
  return h}
 async function save(i){
- if(sb){try{chk(await sb.from('saved_recipes').insert({user_id:S.uid,recipe_name:R[i].n}).select().single())}catch(e){return fail(e)}}
+ if(sb){try{chk(await sb.from('saved_recipes').insert({user_id:S.uid,recipe_name:R[i].n}))}catch(e){return fail(e)}}
  S.saved.push(i);toast('Recipe saved.',1);render()}
 async function addMissing(i){
  try{var m=R[i].ing.filter(function(g){return !has(g)});for(var k=0;k<m.length;k++)await addG(ingObj(m[k]).n)}catch(e){return fail(e)}
