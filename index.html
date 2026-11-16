@@ -85,6 +85,15 @@ details[open] summary::after{content:"\2212"}
 details ul,details ol{margin:0 0 10px;padding-left:20px}
 .have{color:var(--ok)}.miss{color:var(--warn)}
 .g{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.gsearch{display:flex;gap:10px;align-items:center;width:100%}
+.gsearchfield{position:relative;flex:1;min-width:0}
+.gsearchfield input{width:100%}
+.grocery-suggestions{position:absolute;z-index:8;top:calc(100% + 4px);left:0;right:0;max-height:240px;overflow-y:auto;background:var(--card);border:1.5px solid var(--line);border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.16)}
+.grocery-suggestion{display:block;width:100%;padding:10px 12px;border:0;border-bottom:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.grocery-suggestion:last-child{border-bottom:0}
+.grocery-suggestion:hover,.grocery-suggestion:focus-visible{background:var(--bg);outline:2px solid var(--ok);outline-offset:-2px}
+.grocery-suggestion.empty{color:var(--mute);cursor:default}
+
 .g.done span.t{text-decoration:line-through;color:var(--mute)}
 .g input[type=checkbox]{width:22px;height:22px;flex:none}
 .g .t{flex:1}
@@ -803,8 +812,22 @@ async function addG(n,src){
  if(sb)S.groc.push(rowG(chk(await sb.from('grocery_list_items').insert({user_id:S.uid,item_name:n,source_item_id:src||null}).select().single())));
  else S.groc.push({id:S.nid++,n:n,done:false})}
  
+var grocerySuggestionIndex=-1;
+function showGrocerySuggestions(){var input=document.getElementById('gi'),box=document.getElementById('giSuggestions');if(!input||!box)return;
+ var query=input.value.trim().toLowerCase(),matches=S.inv.filter(function(x){return (!query||x.n.toLowerCase().indexOf(query)>-1)&&!S.groc.some(function(g){return g.n.toLowerCase()==x.n.toLowerCase()})}).slice(0,8);
+ box.innerHTML='';grocerySuggestionIndex=-1;
+ if(!matches.length){if(query){var empty=document.createElement('div');empty.className='grocery-suggestion empty';empty.textContent='No matching inventory items';box.appendChild(empty);box.classList.remove('hide')}else box.classList.add('hide')}
+ else{matches.forEach(function(x){var b=document.createElement('button');b.type='button';b.className='grocery-suggestion';b.setAttribute('role','option');b.setAttribute('aria-label','Add '+x.n+' from food inventory');b.textContent=x.n;b.onmousedown=function(e){e.preventDefault()};b.onclick=function(){gAddInventoryItem(x.id)};box.appendChild(b)});box.classList.remove('hide')}
+ input.setAttribute('aria-expanded',box.classList.contains('hide')?'false':'true')}
+function hideGrocerySuggestions(){var box=document.getElementById('giSuggestions'),input=document.getElementById('gi');if(box)box.classList.add('hide');if(input)input.setAttribute('aria-expanded','false');grocerySuggestionIndex=-1}
+function grocerySuggestionKey(event){var box=document.getElementById('giSuggestions'),buttons=box?box.querySelectorAll('button.grocery-suggestion'):[];
+ if(event.key=='Escape'){hideGrocerySuggestions();return}
+ if(event.key=='ArrowDown'||event.key=='ArrowUp'){if(!buttons.length)return;event.preventDefault();grocerySuggestionIndex=(grocerySuggestionIndex+(event.key=='ArrowDown'?1:-1)+buttons.length)%buttons.length;buttons[grocerySuggestionIndex].focus();return}
+ if(event.key=='Enter'){event.preventDefault();if(document.activeElement&&document.activeElement.classList.contains('grocery-suggestion'))document.activeElement.click();else gAdd()}}
+async function gAddInventoryItem(id){var x=S.inv.filter(function(i){return String(i.id)==String(id)})[0];if(!x)return;
+ hideGrocerySuggestions();try{await addG(x.n,x.id)}catch(e){return fail(e)}render()}
 function grocH(){
- var h='<h1>Grocery List</h1><p class="sub">Check items off as you shop.</p><div class="row"><input id="gi" placeholder="Add an item" aria-label="Add an item"><button class="btn acc" style="width:auto;margin:0;padding:12px 18px" onclick="gAdd()">Add</button></div>';
+ var h='<h1>Grocery List</h1><p class="sub">Check items off as you shop.</p><div class="gsearch"><div class="gsearchfield"><input id="gi" placeholder="Search inventory or add an item" aria-label="Search inventory or add an item" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="giSuggestions" aria-expanded="false" oninput="showGrocerySuggestions()" onfocus="showGrocerySuggestions()" onkeydown="grocerySuggestionKey(event)"><div id="giSuggestions" class="grocery-suggestions hide" role="listbox"></div></div><button class="btn acc" style="width:auto;margin:0;padding:12px 18px" onclick="gAdd()">Add</button></div>';
  h+='<button class="btn ghost" style="margin-top:12px" onclick="S.gopen=!S.gopen;render()">'+(S.gopen?'Hide':'See')+' suggested items</button>';
  if(S.gopen){var s=S.inv.filter(function(x){return x.q<=1||(x.e&&days(x.e)<=3)});
   // NEW: add used items, skipping ones already in the grocery list, back in inventory, or repeated
@@ -814,7 +837,7 @@ function grocH(){
  if(!S.groc.length)h+='<div class="note">Your list is empty. Add your first item above.</div>';
  S.groc.forEach(function(g){h+='<div class="g '+(g.done?'done':'')+'"><input type="checkbox" '+(g.done?'checked':'')+' onchange="gTog('+g.id+')" aria-label="Bought '+esc(g.n)+'"><span class="t">&bull; '+esc(g.n)+'</span><button class="mini" onclick="gEdit('+g.id+')">Edit</button><button class="mini" onclick="gDel('+g.id+')">Delete</button></div>'});
  return h+'<button class="btn" onclick="go(\'app\',\'inv\')">Back to inventory</button>'}
-async function gAdd(){var n=v('gi');if(!n)return toast('Please enter an item.');try{await addG(n)}catch(e){return fail(e)}render()}
+async function gAdd(){var n=v('gi');if(!n)return toast('Please enter an item.');var match=S.inv.filter(function(x){return x.n.toLowerCase()==n.toLowerCase()})[0];hideGrocerySuggestions();try{await addG(n,match?match.id:null)}catch(e){return fail(e)}render()}
 // CHANGED: gSug also looks in used items
 async function gSug(id){var x=S.inv.concat(S.used).filter(function(i){return i.id==id})[0];if(!x)return;try{await addG(x.n,x.id)}catch(e){return fail(e)}render()}
 async function gTog(id){var g=S.groc.filter(function(x){return x.id==id})[0];if(!g)return;
